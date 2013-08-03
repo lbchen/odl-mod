@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wadl:application xmlns:wadl="http://wadl.dev.java.net/2009/02" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <wadl:doc xmlns:enunciate="http://enunciate.codehaus.org/" enunciate:generatedBy="Enunciate-1.26.1"/>
+  <wadl:grammars>
+    <wadl:include href="ns0.xsd"/>
+  </wadl:grammars>
+  <wadl:resources base="http://localhost:8080/full">
+    <wadl:resource path="/controller/nb/v2/statistics/{containerName}/flowstats">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of all Flow Statistics from all the Nodes.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[List of FlowStatistics from all the Nodes]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="allFlowStatistics"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/statistics/{containerName}/portstats">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of all the Port Statistics across all the NodeConnectors
+on all the Nodes.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[List of all the Port Statistics across all the NodeConnectors on
+all the Nodes.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="allPortStatistics"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/statistics/{containerName}/tablestats">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of all the Table Statistics on all Nodes.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Returns a list of all the Table Statistics in a given Node.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="tableStatistics"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/statistics/{containerName}/flowstats/{nodeType}/{nodeId}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Node Type as specifid by Node class]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template">
+        <wadl:doc>
+          <![CDATA[Node Identifier]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of Flow Statistics for a given Node.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[List of Flow Statistics for a given Node.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="flowStatistics"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/statistics/{containerName}/portstats/{nodeType}/{nodeId}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Node Type as specifid by Node class]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template"/>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of all the Port Statistics across all the NodeConnectors
+in a given Node.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Returns a list of all the Port Statistics across all the
+NodeConnectors in a given Node.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="portStatistics"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/statistics/{containerName}/tablestats/{nodeType}/{nodeId}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Node Type as specifid by Node class]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template"/>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of all the Table Statistics on all Nodes.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Returns a list of all the Table Statistics in a given Node.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="tableStatistics"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+  </wadl:resources>
+</wadl:application>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema version="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="host" type="hostNodeConnector"/>
+  <xs:element name="hosts" type="hosts"/>
+  <xs:element name="host" type="host"/>
+  <xs:element name="node" type="node"/>
+  <xs:element name="nodeConnector" type="nodeConnector"/>
+  <xs:element name="dataLinkAddress" type="dataLinkAddress"/>
+  <xs:element name="ethernetAddress" type="ethernetAddress"/>
+  <xs:complexType name="hostNodeConnector">
+    <xs:complexContent>
+      <xs:extension base="host">
+        <xs:sequence>
+          <xs:element name="vlan" type="xs:short" minOccurs="1"/>
+          <xs:element name="nodeConnector" type="nodeConnector" minOccurs="0"/>
+          <xs:element name="staticHost" type="xs:boolean" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="hosts">
+    <xs:sequence>
+      <xs:element name="host" type="hostNodeConnector" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="host">
+    <xs:sequence>
+      <xs:element name="networkAddress" type="xs:string" minOccurs="0"/>
+      <xs:element name="dataLayerAddress" type="dataLinkAddress" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="node">
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="type" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="nodeConnector">
+    <xs:sequence>
+      <xs:element name="node" type="node" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="type" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="dataLinkAddress" abstract="true"/>
+  <xs:complexType name="ethernetAddress">
+    <xs:complexContent>
+      <xs:extension base="dataLinkAddress">
+        <xs:sequence>
+          <xs:element name="macAddress" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

@@ -1,0 +1,1360 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HostTracker.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">HostTracker.java</span></div><h1>HostTracker.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Dictionary;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+import org.apache.felix.dm.Component;
+import org.opendaylight.controller.clustering.services.CacheConfigException;
+import org.opendaylight.controller.clustering.services.CacheExistException;
+import org.opendaylight.controller.clustering.services.IClusterContainerServices;
+import org.opendaylight.controller.clustering.services.IClusterServices;
+import org.opendaylight.controller.hosttracker.IfHostListener;
+import org.opendaylight.controller.hosttracker.IfIptoHost;
+import org.opendaylight.controller.hosttracker.IfNewHostNotify;
+import org.opendaylight.controller.hosttracker.hostAware.HostNodeConnector;
+import org.opendaylight.controller.hosttracker.hostAware.IHostFinder;
+import org.opendaylight.controller.sal.core.ConstructionException;
+import org.opendaylight.controller.sal.core.Edge;
+import org.opendaylight.controller.sal.core.Host;
+import org.opendaylight.controller.sal.core.Node;
+import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.core.Property;
+import org.opendaylight.controller.sal.core.State;
+import org.opendaylight.controller.sal.core.Tier;
+import org.opendaylight.controller.sal.core.UpdateType;
+import org.opendaylight.controller.sal.packet.address.DataLinkAddress;
+import org.opendaylight.controller.sal.packet.address.EthernetAddress;
+import org.opendaylight.controller.sal.topology.TopoEdgeUpdate;
+import org.opendaylight.controller.sal.utils.GlobalConstants;
+import org.opendaylight.controller.sal.utils.HexEncode;
+import org.opendaylight.controller.sal.utils.NodeCreator;
+import org.opendaylight.controller.sal.utils.Status;
+import org.opendaylight.controller.sal.utils.StatusCode;
+import org.opendaylight.controller.switchmanager.IInventoryListener;
+import org.opendaylight.controller.switchmanager.ISwitchManager;
+import org.opendaylight.controller.switchmanager.ISwitchManagerAware;
+import org.opendaylight.controller.switchmanager.Subnet;
+import org.opendaylight.controller.topologymanager.ITopologyManager;
+import org.opendaylight.controller.topologymanager.ITopologyManagerAware;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * @file HostTracker.java This class tracks the location of IP Hosts as to which
+ *       Switch, Port, VLAN, they are connected to, as well as their MAC
+ *       address. This is done dynamically as well as statically. The dynamic
+ *       mechanism consists of listening to ARP messages as well sending ARP
+ *       requests. Static mechanism consists of Northbound APIs to add or remove
+ *       the hosts from the local database. ARP aging is also implemented to age
+ *       out dynamically learned hosts. Interface methods are provided for other
+ *       applications to 1. Query the local database for a single host 2. Get a
+ *       list of all hosts 3. Get notification if a host is learned/added or
+ *       removed the database
+ */
+
+public class HostTracker implements IfIptoHost, IfHostListener,
+        ISwitchManagerAware, IInventoryListener, ITopologyManagerAware {
+<span class="nc" id="L82">    private static final Logger logger = LoggerFactory</span>
+<span class="nc" id="L83">            .getLogger(HostTracker.class);</span>
+    private IHostFinder hostFinder;
+    private ConcurrentMap&lt;InetAddress, HostNodeConnector&gt; hostsDB;
+    /*
+     * Following is a list of hosts which have been requested by NB APIs to be
+     * added, but either the switch or the port is not sup, so they will be
+     * added here until both come up
+     */
+    private ConcurrentMap&lt;NodeConnector, HostNodeConnector&gt; inactiveStaticHosts;
+<span class="nc" id="L92">    private Set&lt;IfNewHostNotify&gt; newHostNotify = Collections</span>
+<span class="nc" id="L93">            .synchronizedSet(new HashSet&lt;IfNewHostNotify&gt;());</span>
+
+    private ITopologyManager topologyManager;
+<span class="nc" id="L96">    private IClusterContainerServices clusterContainerService = null;</span>
+<span class="nc" id="L97">    private ISwitchManager switchManager = null;</span>
+    private Timer timer;
+    private Timer arp_refresh_timer;
+<span class="nc" id="L100">    private String containerName = null;</span>
+
+<span class="nc" id="L102">    private static class ARPPending {</span>
+        protected InetAddress hostIP;
+        protected short sent_count;
+        protected HostTrackerCallable hostTrackerCallable;
+
+        public InetAddress getHostIP() {
+<span class="nc" id="L108">            return hostIP;</span>
+        }
+
+        public short getSent_count() {
+<span class="nc" id="L112">            return sent_count;</span>
+        }
+
+        public HostTrackerCallable getHostTrackerCallable() {
+<span class="nc" id="L116">            return hostTrackerCallable;</span>
+        }
+
+        public void setHostIP(InetAddress networkAddr) {
+<span class="nc" id="L120">            this.hostIP = networkAddr;</span>
+<span class="nc" id="L121">        }</span>
+
+        public void setSent_count(short count) {
+<span class="nc" id="L124">            this.sent_count = count;</span>
+<span class="nc" id="L125">        }</span>
+
+        public void setHostTrackerCallable(HostTrackerCallable callable) {
+<span class="nc" id="L128">            hostTrackerCallable = callable;</span>
+<span class="nc" id="L129">        }</span>
+    }
+
+    // This list contains the hosts for which ARP requests are being sent
+    // periodically
+<span class="nc" id="L134">    private List&lt;ARPPending&gt; ARPPendingList = new ArrayList&lt;HostTracker.ARPPending&gt;();</span>
+    /*
+     * This list below contains the hosts which were initially in ARPPendingList
+     * above, but ARP response didn't come from there hosts after multiple
+     * attempts over 8 seconds. The assumption is that the response didn't come
+     * back due to one of the following possibilities: 1. The L3 interface
+     * wasn't created for this host in the controller. This would cause
+     * arphandler not to know where to send the ARP 2. The host facing port is
+     * down 3. The IP host doesn't exist or is not responding to ARP requests
+     *
+     * Conditions 1 and 2 above can be recovered if ARP is sent when the
+     * relevant L3 interface is added or the port facing host comes up. Whenever
+     * L3 interface is added or host facing port comes up, ARP will be sent to
+     * hosts in this list.
+     *
+     * We can't recover from condition 3 above
+     */
+<span class="nc" id="L151">    private ArrayList&lt;ARPPending&gt; failedARPReqList = new ArrayList&lt;HostTracker.ARPPending&gt;();</span>
+
+<span class="nc" id="L153">    public HostTracker() {</span>
+<span class="nc" id="L154">    }</span>
+
+    private void startUp() {
+<span class="nc" id="L157">        allocateCache();</span>
+<span class="nc" id="L158">        retrieveCache();</span>
+
+<span class="nc" id="L160">        timer = new Timer();</span>
+<span class="nc" id="L161">        timer.schedule(new OutStandingARPHandler(), 4000, 4000);</span>
+
+        /* ARP Refresh Timer to go off every 5 seconds to implement ARP aging */
+<span class="nc" id="L164">        arp_refresh_timer = new Timer();</span>
+<span class="nc" id="L165">        arp_refresh_timer.schedule(new ARPRefreshHandler(), 5000, 5000);</span>
+<span class="nc" id="L166">        logger.debug(&quot;startUp: Caches created, timers started&quot;);</span>
+<span class="nc" id="L167">    }</span>
+
+    @SuppressWarnings(&quot;deprecation&quot;)
+    private void allocateCache() {
+<span class="nc bnc" id="L171" title="All 2 branches missed.">        if (this.clusterContainerService == null) {</span>
+<span class="nc" id="L172">            logger.error(&quot;un-initialized clusterContainerService, can't create cache&quot;);</span>
+<span class="nc" id="L173">            return;</span>
+        }
+<span class="nc" id="L175">        logger.debug(&quot;Creating Cache for HostTracker&quot;);</span>
+        try {
+<span class="nc" id="L177">            this.clusterContainerService.createCache(&quot;hostTrackerAH&quot;,</span>
+<span class="nc" id="L178">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L179">            this.clusterContainerService.createCache(&quot;hostTrackerIH&quot;,</span>
+<span class="nc" id="L180">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L181">        } catch (CacheConfigException cce) {</span>
+<span class="nc" id="L182">            logger.error(&quot;Cache couldn't be created for HostTracker -  check cache mode&quot;);</span>
+<span class="nc" id="L183">        } catch (CacheExistException cce) {</span>
+<span class="nc" id="L184">            logger.error(&quot;Cache for HostTracker already exists, destroy and recreate&quot;);</span>
+        }
+<span class="nc" id="L186">        logger.debug(&quot;Cache successfully created for HostTracker&quot;);</span>
+<span class="nc" id="L187">    }</span>
+
+    @SuppressWarnings({ &quot;unchecked&quot;, &quot;deprecation&quot; })
+    private void retrieveCache() {
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (this.clusterContainerService == null) {</span>
+<span class="nc" id="L192">            logger.error(&quot;un-initialized clusterContainerService, can't retrieve cache&quot;);</span>
+<span class="nc" id="L193">            return;</span>
+        }
+<span class="nc" id="L195">        logger.debug(&quot;Retrieving cache for HostTrackerAH&quot;);</span>
+<span class="nc" id="L196">        hostsDB = (ConcurrentMap&lt;InetAddress, HostNodeConnector&gt;) this.clusterContainerService</span>
+<span class="nc" id="L197">                .getCache(&quot;hostTrackerAH&quot;);</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">        if (hostsDB == null) {</span>
+<span class="nc" id="L199">            logger.error(&quot;Cache couldn't be retrieved for HostTracker&quot;);</span>
+        }
+<span class="nc" id="L201">        logger.debug(&quot;Cache was successfully retrieved for HostTracker&quot;);</span>
+<span class="nc" id="L202">        logger.debug(&quot;Retrieving cache for HostTrackerIH&quot;);</span>
+<span class="nc" id="L203">        inactiveStaticHosts = (ConcurrentMap&lt;NodeConnector, HostNodeConnector&gt;) this.clusterContainerService</span>
+<span class="nc" id="L204">                .getCache(&quot;hostTrackerIH&quot;);</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        if (inactiveStaticHosts == null) {</span>
+<span class="nc" id="L206">            logger.error(&quot;Cache couldn't be retrieved for HostTrackerIH&quot;);</span>
+        }
+<span class="nc" id="L208">        logger.debug(&quot;Cache was successfully retrieved for HostTrackerIH&quot;);</span>
+<span class="nc" id="L209">    }</span>
+
+    public void nonClusterObjectCreate() {
+<span class="nc" id="L212">        hostsDB = new ConcurrentHashMap&lt;InetAddress, HostNodeConnector&gt;();</span>
+<span class="nc" id="L213">        inactiveStaticHosts = new ConcurrentHashMap&lt;NodeConnector, HostNodeConnector&gt;();</span>
+<span class="nc" id="L214">    }</span>
+
+    @SuppressWarnings(&quot;deprecation&quot;)
+    private void destroyCache() {
+<span class="nc bnc" id="L218" title="All 2 branches missed.">        if (this.clusterContainerService == null) {</span>
+<span class="nc" id="L219">            logger.error(&quot;un-initialized clusterMger, can't destroy cache&quot;);</span>
+<span class="nc" id="L220">            return;</span>
+        }
+<span class="nc" id="L222">        logger.debug(&quot;Destroying Cache for HostTracker&quot;);</span>
+<span class="nc" id="L223">        this.clusterContainerService.destroyCache(&quot;hostTrackerAH&quot;);</span>
+<span class="nc" id="L224">        this.clusterContainerService.destroyCache(&quot;hostTrackerIH&quot;);</span>
+<span class="nc" id="L225">        nonClusterObjectCreate();</span>
+<span class="nc" id="L226">    }</span>
+
+    public void shutDown() {
+<span class="nc" id="L229">    }</span>
+
+    public void setnewHostNotify(IfNewHostNotify obj) {
+<span class="nc" id="L232">        this.newHostNotify.add(obj);</span>
+<span class="nc" id="L233">    }</span>
+
+    public void unsetnewHostNotify(IfNewHostNotify obj) {
+<span class="nc" id="L236">        this.newHostNotify.remove(obj);</span>
+<span class="nc" id="L237">    }</span>
+
+    public void setArpHandler(IHostFinder hostFinder) {
+<span class="nc" id="L240">        this.hostFinder = hostFinder;</span>
+<span class="nc" id="L241">    }</span>
+
+    public void unsetArpHandler(IHostFinder hostFinder) {
+<span class="nc bnc" id="L244" title="All 2 branches missed.">        if (this.hostFinder == hostFinder) {</span>
+<span class="nc" id="L245">            logger.debug(&quot;Arp Handler Service removed!&quot;);</span>
+<span class="nc" id="L246">            this.hostFinder = null;</span>
+        }
+<span class="nc" id="L248">    }</span>
+
+    public void setTopologyManager(ITopologyManager s) {
+<span class="nc" id="L251">        this.topologyManager = s;</span>
+<span class="nc" id="L252">    }</span>
+
+    public void unsetTopologyManager(ITopologyManager s) {
+<span class="nc bnc" id="L255" title="All 2 branches missed.">        if (this.topologyManager == s) {</span>
+<span class="nc" id="L256">            logger.debug(&quot;Topology Manager Service removed!&quot;);</span>
+<span class="nc" id="L257">            this.topologyManager = null;</span>
+        }
+<span class="nc" id="L259">    }</span>
+
+    private boolean hostExists(HostNodeConnector host) {
+<span class="nc" id="L262">        HostNodeConnector lhost = hostsDB.get(host.getNetworkAddress());</span>
+<span class="nc" id="L263">        return host.equals(lhost);</span>
+    }
+
+    private HostNodeConnector getHostFromOnActiveDB(InetAddress networkAddress) {
+<span class="nc" id="L267">        return hostsDB.get(networkAddress);</span>
+    }
+
+    private Entry&lt;NodeConnector, HostNodeConnector&gt; getHostFromInactiveDB(
+            InetAddress networkAddress) {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">        for (Entry&lt;NodeConnector, HostNodeConnector&gt; entry : inactiveStaticHosts</span>
+<span class="nc" id="L273">                .entrySet()) {</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">            if (entry.getValue().equalsByIP(networkAddress)) {</span>
+<span class="nc" id="L275">                logger.debug(</span>
+<span class="nc" id="L276">                        &quot;getHostFromInactiveDB(): Inactive Host found for IP:{} &quot;,</span>
+<span class="nc" id="L277">                        networkAddress.getHostAddress());</span>
+<span class="nc" id="L278">                return entry;</span>
+            }
+        }
+<span class="nc" id="L281">        logger.debug(</span>
+<span class="nc" id="L282">                &quot;getHostFromInactiveDB() Inactive Host Not found for IP: {}&quot;,</span>
+<span class="nc" id="L283">                networkAddress.getHostAddress());</span>
+<span class="nc" id="L284">        return null;</span>
+    }
+
+    private void removeHostFromInactiveDB(InetAddress networkAddress) {
+<span class="nc" id="L288">        NodeConnector nodeConnector = null;</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        for (Entry&lt;NodeConnector, HostNodeConnector&gt; entry : inactiveStaticHosts</span>
+<span class="nc" id="L290">                .entrySet()) {</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">            if (entry.getValue().equalsByIP(networkAddress)) {</span>
+<span class="nc" id="L292">                nodeConnector = entry.getKey();</span>
+<span class="nc" id="L293">                break;</span>
+            }
+        }
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        if (nodeConnector != null) {</span>
+<span class="nc" id="L297">            inactiveStaticHosts.remove(nodeConnector);</span>
+<span class="nc" id="L298">            logger.debug(&quot;removeHostFromInactiveDB(): Host Removed for IP: {}&quot;,</span>
+<span class="nc" id="L299">                    networkAddress.getHostAddress());</span>
+<span class="nc" id="L300">            return;</span>
+        }
+<span class="nc" id="L302">        logger.debug(&quot;removeHostFromInactiveDB(): Host Not found for IP: {}&quot;,</span>
+<span class="nc" id="L303">                networkAddress.getHostAddress());</span>
+<span class="nc" id="L304">    }</span>
+
+    protected boolean hostMoved(HostNodeConnector host) {
+<span class="nc bnc" id="L307" title="All 2 branches missed.">        if (hostQuery(host.getNetworkAddress()) != null) {</span>
+<span class="nc" id="L308">            return true;</span>
+        }
+<span class="nc" id="L310">        return false;</span>
+    }
+
+    public HostNodeConnector hostQuery(InetAddress networkAddress) {
+<span class="nc" id="L314">        return hostsDB.get(networkAddress);</span>
+    }
+
+    public Future&lt;HostNodeConnector&gt; discoverHost(InetAddress networkAddress) {
+<span class="nc" id="L318">        ExecutorService executor = Executors.newFixedThreadPool(1);</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">        if (executor == null) {</span>
+<span class="nc" id="L320">            logger.error(&quot;discoverHost: Null executor&quot;);</span>
+<span class="nc" id="L321">            return null;</span>
+        }
+<span class="nc" id="L323">        Callable&lt;HostNodeConnector&gt; worker = new HostTrackerCallable(this,</span>
+<span class="nc" id="L324">                networkAddress);</span>
+<span class="nc" id="L325">        Future&lt;HostNodeConnector&gt; submit = executor.submit(worker);</span>
+<span class="nc" id="L326">        return submit;</span>
+    }
+
+    public HostNodeConnector hostFind(InetAddress networkAddress) {
+        /*
+         * Sometimes at boot with containers configured in the startup we hit
+         * this path (from TIF) when hostFinder has not been set yet Caller
+         * already handles the null return
+         */
+
+<span class="nc bnc" id="L336" title="All 2 branches missed.">        if (hostFinder == null) {</span>
+<span class="nc" id="L337">            logger.debug(&quot;Exiting hostFind, null hostFinder&quot;);</span>
+<span class="nc" id="L338">            return null;</span>
+        }
+
+<span class="nc" id="L341">        HostNodeConnector host = hostQuery(networkAddress);</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">        if (host != null) {</span>
+<span class="nc" id="L343">            logger.debug(&quot;hostFind(): Host found for IP: {}&quot;,</span>
+<span class="nc" id="L344">                    networkAddress.getHostAddress());</span>
+<span class="nc" id="L345">            return host;</span>
+        }
+        /* host is not found, initiate a discovery */
+<span class="nc" id="L348">        hostFinder.find(networkAddress);</span>
+        /* Also add this host to ARPPending List for any potential retries */
+<span class="nc" id="L350">        AddtoARPPendingList(networkAddress);</span>
+<span class="nc" id="L351">        logger.debug(</span>
+<span class="nc" id="L352">                &quot;hostFind(): Host Not Found for IP: {}, Inititated Host Discovery ...&quot;,</span>
+<span class="nc" id="L353">                networkAddress.getHostAddress());</span>
+<span class="nc" id="L354">        return null;</span>
+    }
+
+    public Set&lt;HostNodeConnector&gt; getAllHosts() {
+<span class="nc" id="L358">        Set&lt;HostNodeConnector&gt; allHosts = new HashSet&lt;HostNodeConnector&gt;();</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">        for (Entry&lt;InetAddress, HostNodeConnector&gt; entry : hostsDB.entrySet()) {</span>
+<span class="nc" id="L360">            HostNodeConnector host = entry.getValue();</span>
+<span class="nc" id="L361">            allHosts.add(host);</span>
+        }
+<span class="nc" id="L363">        logger.debug(&quot;Exiting getAllHosts, Found {} Hosts&quot;, allHosts.size());</span>
+<span class="nc" id="L364">        return allHosts;</span>
+    }
+
+    @Override
+    public Set&lt;HostNodeConnector&gt; getActiveStaticHosts() {
+<span class="nc" id="L369">        Set&lt;HostNodeConnector&gt; list = new HashSet&lt;HostNodeConnector&gt;();</span>
+<span class="nc bnc" id="L370" title="All 2 branches missed.">        for (Entry&lt;InetAddress, HostNodeConnector&gt; entry : hostsDB.entrySet()) {</span>
+<span class="nc" id="L371">            HostNodeConnector host = entry.getValue();</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">            if (host.isStaticHost()) {</span>
+<span class="nc" id="L373">                list.add(host);</span>
+            }
+        }
+<span class="nc" id="L376">        logger.debug(&quot;getActiveStaticHosts(): Found {} Hosts&quot;, list.size());</span>
+<span class="nc" id="L377">        return list;</span>
+    }
+
+    @Override
+    public Set&lt;HostNodeConnector&gt; getInactiveStaticHosts() {
+<span class="nc" id="L382">        Set&lt;HostNodeConnector&gt; list = new HashSet&lt;HostNodeConnector&gt;();</span>
+<span class="nc bnc" id="L383" title="All 2 branches missed.">        for (Entry&lt;NodeConnector, HostNodeConnector&gt; entry : inactiveStaticHosts</span>
+<span class="nc" id="L384">                .entrySet()) {</span>
+<span class="nc" id="L385">            list.add(entry.getValue());</span>
+        }
+<span class="nc" id="L387">        logger.debug(&quot;getInactiveStaticHosts(): Found {} Hosts&quot;, list.size());</span>
+<span class="nc" id="L388">        return list;</span>
+    }
+
+    private void AddtoARPPendingList(InetAddress networkAddr) {
+<span class="nc" id="L392">        ARPPending arphost = new ARPPending();</span>
+
+<span class="nc" id="L394">        arphost.setHostIP(networkAddr);</span>
+<span class="nc" id="L395">        arphost.setSent_count((short) 1);</span>
+<span class="nc" id="L396">        ARPPendingList.add(arphost);</span>
+<span class="nc" id="L397">        logger.debug(&quot;Host Added to ARPPending List, IP: {}&quot;, networkAddr);</span>
+<span class="nc" id="L398">    }</span>
+
+    private void removePendingARPFromList(int index) {
+<span class="nc bnc" id="L401" title="All 2 branches missed.">        if (index &gt;= ARPPendingList.size()) {</span>
+<span class="nc" id="L402">            logger.warn(</span>
+<span class="nc" id="L403">                    &quot;removePendingARPFromList(): index greater than the List. Size:{}, Index:{}&quot;,</span>
+<span class="nc" id="L404">                    ARPPendingList.size(), index);</span>
+<span class="nc" id="L405">            return;</span>
+        }
+<span class="nc" id="L407">        ARPPending arphost = ARPPendingList.remove(index);</span>
+<span class="nc" id="L408">        HostTrackerCallable htCallable = arphost.getHostTrackerCallable();</span>
+<span class="nc bnc" id="L409" title="All 2 branches missed.">        if (htCallable != null)</span>
+<span class="nc" id="L410">            htCallable.wakeup();</span>
+<span class="nc" id="L411">    }</span>
+
+    public void setCallableOnPendingARP(InetAddress networkAddr,
+            HostTrackerCallable callable) {
+        ARPPending arphost;
+<span class="nc bnc" id="L416" title="All 2 branches missed.">        for (int i = 0; i &lt; ARPPendingList.size(); i++) {</span>
+<span class="nc" id="L417">            arphost = ARPPendingList.get(i);</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">            if (arphost.getHostIP().equals(networkAddr)) {</span>
+<span class="nc" id="L419">                arphost.setHostTrackerCallable(callable);</span>
+            }
+        }
+<span class="nc" id="L422">    }</span>
+
+    private void ProcPendingARPReqs(InetAddress networkAddr) {
+        ARPPending arphost;
+
+<span class="nc bnc" id="L427" title="All 2 branches missed.">        for (int i = 0; i &lt; ARPPendingList.size(); i++) {</span>
+<span class="nc" id="L428">            arphost = ARPPendingList.get(i);</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">            if (arphost.getHostIP().equals(networkAddr)) {</span>
+                /*
+                 * An ARP was sent for this host. The address is learned, remove
+                 * the request
+                 */
+<span class="nc" id="L434">                removePendingARPFromList(i);</span>
+<span class="nc" id="L435">                logger.debug(&quot;Host Removed from ARPPending List, IP: {}&quot;,</span>
+<span class="nc" id="L436">                        networkAddr);</span>
+<span class="nc" id="L437">                return;</span>
+            }
+        }
+
+        /*
+         * It could have been a host from the FailedARPReqList
+         */
+
+<span class="nc bnc" id="L445" title="All 2 branches missed.">        for (int i = 0; i &lt; failedARPReqList.size(); i++) {</span>
+<span class="nc" id="L446">            arphost = failedARPReqList.get(i);</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">            if (arphost.getHostIP().equals(networkAddr)) {</span>
+                /*
+                 * An ARP was sent for this host. The address is learned, remove
+                 * the request
+                 */
+<span class="nc" id="L452">                failedARPReqList.remove(i);</span>
+<span class="nc" id="L453">                logger.debug(&quot;Host Removed from FailedARPReqList List, IP: {}&quot;,</span>
+<span class="nc" id="L454">                        networkAddr);</span>
+<span class="nc" id="L455">                return;</span>
+            }
+        }
+<span class="nc" id="L458">    }</span>
+
+    // Learn a new Host
+    private void learnNewHost(HostNodeConnector host) {
+<span class="nc" id="L462">        host.initArpSendCountDown();</span>
+<span class="nc" id="L463">        hostsDB.put(host.getNetworkAddress(), host);</span>
+<span class="nc" id="L464">        logger.debug(&quot;New Host Learned: MAC: {}  IP: {}&quot;,</span>
+<span class="nc" id="L465">                HexEncode.bytesToHexString(host.getDataLayerAddressBytes()),</span>
+<span class="nc" id="L466">                host.getNetworkAddress().getHostAddress());</span>
+<span class="nc" id="L467">    }</span>
+
+    // Remove known Host
+    private void removeKnownHost(InetAddress key) {
+<span class="nc" id="L471">        HostNodeConnector host = hostsDB.get(key);</span>
+<span class="nc bnc" id="L472" title="All 2 branches missed.">        if (host != null) {</span>
+<span class="nc" id="L473">            logger.debug(&quot;Removing Host: IP:{}&quot;, host.getNetworkAddress()</span>
+<span class="nc" id="L474">                    .getHostAddress());</span>
+<span class="nc" id="L475">            hostsDB.remove(key);</span>
+<span class="nc" id="L476">        } else {</span>
+<span class="nc" id="L477">            logger.error(</span>
+<span class="nc" id="L478">                    &quot;removeKnownHost(): Host for IP address {} not found in hostsDB&quot;,</span>
+<span class="nc" id="L479">                    key.getHostAddress());</span>
+        }
+<span class="nc" id="L481">    }</span>
+
+    private class NotifyHostThread extends Thread {
+
+        private HostNodeConnector host;
+
+<span class="nc" id="L487">        public NotifyHostThread(HostNodeConnector h) {</span>
+<span class="nc" id="L488">            this.host = h;</span>
+<span class="nc" id="L489">        }</span>
+
+        public void run() {
+            /* Check for Host Move case */
+<span class="nc bnc" id="L493" title="All 2 branches missed.">            if (hostMoved(host)) {</span>
+                /*
+                 * Host has been moved from one location (switch,port, MAC, or
+                 * VLAN). Remove the existing host with its previous location
+                 * parameters, inform the applications, and add it as a new Host
+                 */
+<span class="nc" id="L499">                HostNodeConnector removedHost = hostsDB.get(host</span>
+<span class="nc" id="L500">                        .getNetworkAddress());</span>
+<span class="nc" id="L501">                removeKnownHost(host.getNetworkAddress());</span>
+<span class="nc bnc" id="L502" title="All 2 branches missed.">                if (removedHost != null) {</span>
+<span class="nc" id="L503">                    notifyHostLearnedOrRemoved(removedHost, false);</span>
+<span class="nc" id="L504">                    logger.debug(</span>
+<span class="nc" id="L505">                            &quot;Host move occurred. Old Host:{}, New Host: {}&quot;,</span>
+<span class="nc" id="L506">                            removedHost, host);</span>
+<span class="nc" id="L507">                } else {</span>
+<span class="nc" id="L508">                    logger.error(</span>
+<span class="nc" id="L509">                            &quot;Host to be removed not found in hostsDB. Host {}&quot;,</span>
+<span class="nc" id="L510">                            removedHost);</span>
+                }
+            }
+
+            /* check if there is an outstanding request for this host */
+<span class="nc" id="L515">            InetAddress networkAddr = host.getNetworkAddress();</span>
+
+            // add and notify
+<span class="nc" id="L518">            learnNewHost(host);</span>
+<span class="nc" id="L519">            ProcPendingARPReqs(networkAddr);</span>
+<span class="nc" id="L520">            notifyHostLearnedOrRemoved(host, true);</span>
+<span class="nc" id="L521">        }</span>
+    }
+
+    public void hostListener(HostNodeConnector host) {
+
+<span class="nc bnc" id="L526" title="All 2 branches missed.">        if (hostExists(host)) {</span>
+<span class="nc" id="L527">            logger.debug(&quot;ARP received for Host: {}&quot;, host);</span>
+<span class="nc" id="L528">            HostNodeConnector existinghost = hostsDB.get(host</span>
+<span class="nc" id="L529">                    .getNetworkAddress());</span>
+<span class="nc" id="L530">            existinghost.initArpSendCountDown();</span>
+<span class="nc" id="L531">            return;</span>
+        }
+<span class="nc" id="L533">        new NotifyHostThread(host).start();</span>
+<span class="nc" id="L534">    }</span>
+
+    // Notify whoever is interested that a new host was learned (dynamically or
+    // statically)
+    private void notifyHostLearnedOrRemoved(HostNodeConnector host, boolean add) {
+        // Update listeners if any
+<span class="nc bnc" id="L540" title="All 2 branches missed.">        if (newHostNotify != null) {</span>
+<span class="nc" id="L541">            synchronized (this.newHostNotify) {</span>
+<span class="nc bnc" id="L542" title="All 2 branches missed.">                for (IfNewHostNotify ta : newHostNotify) {</span>
+                    try {
+<span class="nc bnc" id="L544" title="All 2 branches missed.">                        if (add) {</span>
+<span class="nc" id="L545">                            ta.notifyHTClient(host);</span>
+<span class="nc" id="L546">                        } else {</span>
+<span class="nc" id="L547">                            ta.notifyHTClientHostRemoved(host);</span>
+                        }
+<span class="nc" id="L549">                    } catch (Exception e) {</span>
+<span class="nc" id="L550">                        logger.error(&quot;Exception on callback&quot;, e);</span>
+                    }
+                }
+            }
+        } else {
+<span class="nc" id="L555">            logger.error(&quot;notifyHostLearnedOrRemoved(): New host notify is null&quot;);</span>
+        }
+
+        // Topology update is for some reason outside of listeners registry
+        // logic
+<span class="nc" id="L560">        Node node = host.getnodeconnectorNode();</span>
+<span class="nc" id="L561">        Host h = null;</span>
+<span class="nc" id="L562">        NodeConnector p = host.getnodeConnector();</span>
+        try {
+<span class="nc" id="L564">            DataLinkAddress dla = new EthernetAddress(</span>
+<span class="nc" id="L565">                    host.getDataLayerAddressBytes());</span>
+<span class="nc" id="L566">            h = new org.opendaylight.controller.sal.core.Host(dla,</span>
+<span class="nc" id="L567">                    host.getNetworkAddress());</span>
+<span class="nc" id="L568">        } catch (ConstructionException ce) {</span>
+<span class="nc" id="L569">            p = null;</span>
+<span class="nc" id="L570">            h = null;</span>
+        }
+
+<span class="nc bnc" id="L573" title="All 6 branches missed.">        if (topologyManager != null &amp;&amp; p != null &amp;&amp; h != null) {</span>
+<span class="nc bnc" id="L574" title="All 2 branches missed.">            if (add == true) {</span>
+<span class="nc" id="L575">                Tier tier = new Tier(1);</span>
+<span class="nc" id="L576">                switchManager.setNodeProp(node, tier);</span>
+<span class="nc" id="L577">                topologyManager.updateHostLink(p, h, UpdateType.ADDED, null);</span>
+<span class="nc" id="L578">            } else {</span>
+                // No need to reset the tiering if no other hosts are currently
+                // connected
+                // If this switch was discovered to be an access switch, it
+                // still is even if the host is down
+<span class="nc" id="L583">                Tier tier = new Tier(0);</span>
+<span class="nc" id="L584">                switchManager.setNodeProp(node, tier);</span>
+<span class="nc" id="L585">                topologyManager.updateHostLink(p, h, UpdateType.REMOVED, null);</span>
+            }
+        }
+<span class="nc" id="L588">    }</span>
+
+    /**
+     * When a new Host is learnt by the hosttracker module, it places the
+     * directly connected Node in Tier-1 &amp; using this function, updates the Tier
+     * value for all other Nodes in the network hierarchy.
+     *
+     * This is a recursive function and it takes care of updating the Tier value
+     * for all the connected and eligible Nodes.
+     *
+     * @param n
+     *            Node that represents one of the Vertex in the Topology Graph.
+     * @param currentTier
+     *            The Tier on which n belongs
+     */
+    private void updateSwitchTiers(Node n, int currentTier) {
+<span class="nc" id="L604">        Map&lt;Node, Set&lt;Edge&gt;&gt; ndlinks = topologyManager.getNodeEdges();</span>
+<span class="nc bnc" id="L605" title="All 2 branches missed.">        if (ndlinks == null) {</span>
+<span class="nc" id="L606">            logger.debug(</span>
+<span class="nc" id="L607">                    &quot;updateSwitchTiers(): ndlinks null for Node: {}, Tier:{}&quot;,</span>
+<span class="nc" id="L608">                    n, currentTier);</span>
+<span class="nc" id="L609">            return;</span>
+        }
+<span class="nc" id="L611">        Set&lt;Edge&gt; links = ndlinks.get(n);</span>
+<span class="nc bnc" id="L612" title="All 2 branches missed.">        if (links == null) {</span>
+<span class="nc" id="L613">            logger.debug(&quot;updateSwitchTiers(): links null for ndlinks:{}&quot;,</span>
+<span class="nc" id="L614">                    ndlinks);</span>
+<span class="nc" id="L615">            return;</span>
+        }
+<span class="nc" id="L617">        ArrayList&lt;Node&gt; needsVisiting = new ArrayList&lt;Node&gt;();</span>
+<span class="nc bnc" id="L618" title="All 2 branches missed.">        for (Edge lt : links) {</span>
+<span class="nc" id="L619">            if (!lt.getHeadNodeConnector().getType()</span>
+<span class="nc bnc" id="L620" title="All 2 branches missed.">                    .equals(NodeConnector.NodeConnectorIDType.OPENFLOW)) {</span>
+                // We don't want to work on Node that are not openflow
+                // for now
+<span class="nc" id="L623">                continue;</span>
+            }
+<span class="nc" id="L625">            Node dstNode = lt.getHeadNodeConnector().getNode();</span>
+<span class="nc bnc" id="L626" title="All 2 branches missed.">            if (switchNeedsTieringUpdate(dstNode, currentTier + 1)) {</span>
+<span class="nc" id="L627">                Tier t = new Tier(currentTier + 1);</span>
+<span class="nc" id="L628">                switchManager.setNodeProp(dstNode, t);</span>
+<span class="nc" id="L629">                needsVisiting.add(dstNode);</span>
+            }
+        }
+
+        /*
+         * Due to the nature of the problem, having a separate loop for nodes
+         * that needs visiting provides a decent walk optimization.
+         */
+<span class="nc bnc" id="L637" title="All 2 branches missed.">        for (Node node : needsVisiting) {</span>
+<span class="nc" id="L638">            updateSwitchTiers(node, currentTier + 1);</span>
+        }
+<span class="nc" id="L640">    }</span>
+
+    /**
+     * Internal convenience routine to check the eligibility of a Switch for a
+     * Tier update. Any Node with Tier=0 or a Tier value that is greater than
+     * the new Tier Value is eligible for the update.
+     *
+     * @param n
+     *            Node for which the Tier update eligibility is checked
+     * @param tier
+     *            new Tier Value
+     * @return &lt;code&gt;true&lt;/code&gt; if the Node is eligible for Tier Update
+     *         &lt;code&gt;false&lt;/code&gt; otherwise
+     */
+
+    private boolean switchNeedsTieringUpdate(Node n, int tier) {
+<span class="nc bnc" id="L656" title="All 2 branches missed.">        if (n == null) {</span>
+<span class="nc" id="L657">            logger.error(&quot;switchNeedsTieringUpdate(): Null node for tier: {}&quot;,</span>
+<span class="nc" id="L658">                    tier);</span>
+<span class="nc" id="L659">            return false;</span>
+        }
+        /*
+         * Node could have gone down
+         */
+<span class="nc bnc" id="L664" title="All 2 branches missed.">        if (!switchManager.getNodes().contains(n)) {</span>
+<span class="nc" id="L665">            return false;</span>
+        }
+        // This is the case where Tier was never set for this node
+<span class="nc" id="L668">        Tier t = (Tier) switchManager.getNodeProp(n, Tier.TierPropName);</span>
+<span class="nc bnc" id="L669" title="All 2 branches missed.">        if (t == null)</span>
+<span class="nc" id="L670">            return true;</span>
+<span class="nc bnc" id="L671" title="All 2 branches missed.">        if (t.getValue() == 0)</span>
+<span class="nc" id="L672">            return true;</span>
+<span class="nc bnc" id="L673" title="All 2 branches missed.">        else if (t.getValue() &gt; tier)</span>
+<span class="nc" id="L674">            return true;</span>
+<span class="nc" id="L675">        return false;</span>
+    }
+
+    /**
+     * Internal convenience routine to clear all the Tier values to 0. This
+     * cleanup is performed during cases such as Topology Change where the
+     * existing Tier values might become incorrect
+     */
+    private void clearTiers() {
+<span class="nc" id="L684">        Set&lt;Node&gt; nodes = null;</span>
+<span class="nc bnc" id="L685" title="All 2 branches missed.">        if (switchManager == null) {</span>
+<span class="nc" id="L686">            logger.error(&quot;clearTiers(): Null switchManager&quot;);</span>
+<span class="nc" id="L687">            return;</span>
+        }
+<span class="nc" id="L689">        nodes = switchManager.getNodes();</span>
+
+<span class="nc bnc" id="L691" title="All 2 branches missed.">        for (Node n : nodes) {</span>
+<span class="nc" id="L692">            Tier t = new Tier(0);</span>
+<span class="nc" id="L693">            switchManager.setNodeProp(n, t);</span>
+        }
+<span class="nc" id="L695">    }</span>
+
+    /**
+     * Internal convenience routine to print the hierarchies of switches.
+     */
+    @SuppressWarnings(&quot;unused&quot;)
+    private void logHierarchies(ArrayList&lt;ArrayList&lt;String&gt;&gt; hierarchies) {
+<span class="nc" id="L702">        String hierarchyString = null;</span>
+<span class="nc" id="L703">        int num = 1;</span>
+<span class="nc bnc" id="L704" title="All 2 branches missed.">        for (ArrayList&lt;String&gt; hierarchy : hierarchies) {</span>
+<span class="nc" id="L705">            StringBuffer buf = new StringBuffer();</span>
+<span class="nc" id="L706">            buf.append(&quot;Hierarchy#&quot; + num + &quot; : &quot;);</span>
+<span class="nc bnc" id="L707" title="All 2 branches missed.">            for (String switchName : hierarchy) {</span>
+<span class="nc" id="L708">                buf.append(switchName + &quot;/&quot;);</span>
+            }
+<span class="nc" id="L710">            logger.debug(&quot;{} -&gt; {}&quot;, getContainerName(), buf);</span>
+<span class="nc" id="L711">            num++;</span>
+        }
+<span class="nc" id="L713">    }</span>
+
+    /**
+     * getHostNetworkHierarchy is the Back-end routine for the North-Bound API
+     * that returns the Network Hierarchy for a given Host. This API is
+     * typically used by applications like Hadoop for Rack Awareness
+     * functionality.
+     *
+     * @param hostAddress
+     *            IP-Address of the host/node.
+     * @return Network Hierarchies represented by an Array of Array (of
+     *         Switch-Ids as String).
+     */
+    public List&lt;List&lt;String&gt;&gt; getHostNetworkHierarchy(InetAddress hostAddress) {
+<span class="nc" id="L727">        HostNodeConnector host = hostQuery(hostAddress);</span>
+<span class="nc bnc" id="L728" title="All 2 branches missed.">        if (host == null)</span>
+<span class="nc" id="L729">            return null;</span>
+
+<span class="nc" id="L731">        List&lt;List&lt;String&gt;&gt; hierarchies = new ArrayList&lt;List&lt;String&gt;&gt;();</span>
+<span class="nc" id="L732">        ArrayList&lt;String&gt; currHierarchy = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L733">        hierarchies.add(currHierarchy);</span>
+
+<span class="nc" id="L735">        Node node = host.getnodeconnectorNode();</span>
+<span class="nc" id="L736">        updateCurrentHierarchy(node, currHierarchy, hierarchies);</span>
+<span class="nc" id="L737">        return hierarchies;</span>
+    }
+
+    /**
+     * dpidToHostNameHack is a hack function for Cisco Live Hadoop Demo. Mininet
+     * is used as the network for Hadoop Demos &amp; in order to give a meaningful
+     * rack-awareness switch names, the DPID is organized in ASCII Characters
+     * and retrieved as string.
+     *
+     * @param dpid
+     *            Switch DataPath Id
+     * @return Ascii String represented by the DPID.
+     */
+    private String dpidToHostNameHack(long dpid) {
+<span class="nc" id="L751">        String hex = Long.toHexString(dpid);</span>
+
+<span class="nc" id="L753">        StringBuffer sb = new StringBuffer();</span>
+<span class="nc" id="L754">        int result = 0;</span>
+<span class="nc bnc" id="L755" title="All 2 branches missed.">        for (int i = 0; i &lt; hex.length(); i++) {</span>
+<span class="nc" id="L756">            result = (int) ((dpid &gt;&gt; (i * 8)) &amp; 0xff);</span>
+<span class="nc bnc" id="L757" title="All 2 branches missed.">            if (result == 0)</span>
+<span class="nc" id="L758">                continue;</span>
+<span class="nc bnc" id="L759" title="All 2 branches missed.">            if (result &lt; 0x30)</span>
+<span class="nc" id="L760">                result += 0x40;</span>
+<span class="nc" id="L761">            sb.append(String.format(&quot;%c&quot;, result));</span>
+        }
+<span class="nc" id="L763">        return sb.reverse().toString();</span>
+    }
+
+    /**
+     * A convenient recursive routine to obtain the Hierarchy of Switches.
+     *
+     * @param node
+     *            Current Node in the Recursive routine.
+     * @param currHierarchy
+     *            Array of Nodes that make this hierarchy on which the Current
+     *            Switch belong
+     * @param fullHierarchy
+     *            Array of multiple Hierarchies that represent a given host.
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private void updateCurrentHierarchy(Node node,
+            ArrayList&lt;String&gt; currHierarchy, List&lt;List&lt;String&gt;&gt; fullHierarchy) {
+        // currHierarchy.add(String.format(&quot;%x&quot;, currSw.getId()));
+<span class="nc" id="L781">        currHierarchy.add(dpidToHostNameHack((Long) node.getID()));</span>
+<span class="nc" id="L782">        ArrayList&lt;String&gt; currHierarchyClone = (ArrayList&lt;String&gt;) currHierarchy</span>
+<span class="nc" id="L783">                .clone(); // Shallow copy as required</span>
+
+<span class="nc" id="L785">        Map&lt;Node, Set&lt;Edge&gt;&gt; ndlinks = topologyManager.getNodeEdges();</span>
+<span class="nc bnc" id="L786" title="All 2 branches missed.">        if (ndlinks == null) {</span>
+<span class="nc" id="L787">            logger.debug(</span>
+<span class="nc" id="L788">                    &quot;updateCurrentHierarchy(): topologyManager returned null ndlinks for node: {}&quot;,</span>
+<span class="nc" id="L789">                    node);</span>
+<span class="nc" id="L790">            return;</span>
+        }
+<span class="nc" id="L792">        Node n = NodeCreator.createOFNode((Long) node.getID());</span>
+<span class="nc" id="L793">        Set&lt;Edge&gt; links = ndlinks.get(n);</span>
+<span class="nc bnc" id="L794" title="All 2 branches missed.">        if (links == null) {</span>
+<span class="nc" id="L795">            logger.debug(&quot;updateCurrentHierarchy(): Null links for ndlinks&quot;);</span>
+<span class="nc" id="L796">            return;</span>
+        }
+<span class="nc bnc" id="L798" title="All 2 branches missed.">        for (Edge lt : links) {</span>
+<span class="nc" id="L799">            if (!lt.getHeadNodeConnector().getType()</span>
+<span class="nc bnc" id="L800" title="All 2 branches missed.">                    .equals(NodeConnector.NodeConnectorIDType.OPENFLOW)) {</span>
+                // We don't want to work on Node that are not openflow
+                // for now
+<span class="nc" id="L803">                continue;</span>
+            }
+<span class="nc" id="L805">            Node dstNode = lt.getHeadNodeConnector().getNode();</span>
+
+<span class="nc" id="L807">            Tier nodeTier = (Tier) switchManager.getNodeProp(node,</span>
+<span class="nc" id="L808">                    Tier.TierPropName);</span>
+<span class="nc" id="L809">            Tier dstNodeTier = (Tier) switchManager.getNodeProp(dstNode,</span>
+<span class="nc" id="L810">                    Tier.TierPropName);</span>
+<span class="nc bnc" id="L811" title="All 2 branches missed.">            if (dstNodeTier.getValue() &gt; nodeTier.getValue()) {</span>
+<span class="nc" id="L812">                ArrayList&lt;String&gt; buildHierarchy = currHierarchy;</span>
+<span class="nc bnc" id="L813" title="All 2 branches missed.">                if (currHierarchy.size() &gt; currHierarchyClone.size()) {</span>
+<span class="nc" id="L814">                    buildHierarchy = (ArrayList&lt;String&gt;) currHierarchyClone</span>
+<span class="nc" id="L815">                            .clone(); // Shallow copy as required</span>
+<span class="nc" id="L816">                    fullHierarchy.add(buildHierarchy);</span>
+                }
+<span class="nc" id="L818">                updateCurrentHierarchy(dstNode, buildHierarchy, fullHierarchy);</span>
+            }
+        }
+<span class="nc" id="L821">    }</span>
+
+    private void edgeUpdate(Edge e, UpdateType type, Set&lt;Property&gt; props) {
+<span class="nc" id="L824">        Long srcNid = null;</span>
+<span class="nc" id="L825">        Short srcPort = null;</span>
+<span class="nc" id="L826">        Long dstNid = null;</span>
+<span class="nc" id="L827">        Short dstPort = null;</span>
+<span class="nc" id="L828">        boolean added = false;</span>
+<span class="nc" id="L829">        String srcType = null;</span>
+<span class="nc" id="L830">        String dstType = null;</span>
+
+<span class="nc bnc" id="L832" title="All 4 branches missed.">        if (e == null || type == null) {</span>
+<span class="nc" id="L833">            logger.error(&quot;Edge or Update type are null!&quot;);</span>
+<span class="nc" id="L834">            return;</span>
+        } else {
+<span class="nc" id="L836">            srcType = e.getTailNodeConnector().getType();</span>
+<span class="nc" id="L837">            dstType = e.getHeadNodeConnector().getType();</span>
+
+<span class="nc bnc" id="L839" title="All 2 branches missed.">            if (srcType.equals(NodeConnector.NodeConnectorIDType.PRODUCTION)) {</span>
+<span class="nc" id="L840">                logger.debug(&quot;Skip updates for {}&quot;, e);</span>
+<span class="nc" id="L841">                return;</span>
+            }
+
+<span class="nc bnc" id="L844" title="All 2 branches missed.">            if (!srcType.equals(NodeConnector.NodeConnectorIDType.OPENFLOW)) {</span>
+<span class="nc" id="L845">                logger.error(&quot;For now we cannot handle updates for &quot;</span>
+                        + &quot;non-openflow nodes&quot;);
+<span class="nc" id="L847">                return;</span>
+            }
+
+<span class="nc bnc" id="L850" title="All 2 branches missed.">            if (dstType.equals(NodeConnector.NodeConnectorIDType.PRODUCTION)) {</span>
+<span class="nc" id="L851">                logger.debug(&quot;Skip updates for {}&quot;, e);</span>
+<span class="nc" id="L852">                return;</span>
+            }
+
+<span class="nc bnc" id="L855" title="All 2 branches missed.">            if (!dstType.equals(NodeConnector.NodeConnectorIDType.OPENFLOW)) {</span>
+<span class="nc" id="L856">                logger.error(&quot;For now we cannot handle updates for &quot;</span>
+                        + &quot;non-openflow nodes&quot;);
+<span class="nc" id="L858">                return;</span>
+            }
+
+            // At this point we know we got an openflow update, so
+            // lets fill everything accordingly.
+<span class="nc" id="L863">            srcNid = (Long) e.getTailNodeConnector().getNode().getID();</span>
+<span class="nc" id="L864">            srcPort = (Short) e.getTailNodeConnector().getID();</span>
+<span class="nc" id="L865">            dstNid = (Long) e.getHeadNodeConnector().getNode().getID();</span>
+<span class="nc" id="L866">            dstPort = (Short) e.getHeadNodeConnector().getID();</span>
+
+            // Now lets update the added flag
+<span class="nc bnc" id="L869" title="All 3 branches missed.">            switch (type) {</span>
+            case ADDED:
+            case CHANGED:
+<span class="nc" id="L872">                added = true;</span>
+<span class="nc" id="L873">                break;</span>
+            case REMOVED:
+<span class="nc" id="L875">                added = false;</span>
+            }
+        }
+
+<span class="nc" id="L879">        logger.debug(</span>
+<span class="nc" id="L880">                &quot;HostTracker Topology linkUpdate handling src:{}[port {}] dst:{}[port {}] added: {}&quot;,</span>
+<span class="nc" id="L881">                new Object[] { srcNid, srcPort, dstNid, dstPort, added });</span>
+<span class="nc" id="L882">    }</span>
+
+    @Override
+    public void edgeUpdate(List&lt;TopoEdgeUpdate&gt; topoedgeupdateList) {
+<span class="nc bnc" id="L886" title="All 2 branches missed.">        for (int i = 0; i &lt; topoedgeupdateList.size(); i++) {</span>
+<span class="nc" id="L887">            Edge e = topoedgeupdateList.get(i).getEdge();</span>
+<span class="nc" id="L888">            Set&lt;Property&gt; p = topoedgeupdateList.get(i).getProperty();</span>
+<span class="nc" id="L889">            UpdateType type = topoedgeupdateList.get(i).getUpdateType();</span>
+<span class="nc" id="L890">            edgeUpdate(e, type, p);</span>
+        }
+<span class="nc" id="L892">    }</span>
+
+    public void subnetNotify(Subnet sub, boolean add) {
+<span class="nc" id="L895">        logger.debug(&quot;Received subnet notification: {}  add={}&quot;, sub, add);</span>
+<span class="nc bnc" id="L896" title="All 2 branches missed.">        if (add) {</span>
+<span class="nc bnc" id="L897" title="All 2 branches missed.">            for (int i = 0; i &lt; failedARPReqList.size(); i++) {</span>
+                ARPPending arphost;
+<span class="nc" id="L899">                arphost = failedARPReqList.get(i);</span>
+<span class="nc" id="L900">                logger.debug(</span>
+<span class="nc" id="L901">                        &quot;Sending the ARP from FailedARPReqList fors IP: {}&quot;,</span>
+<span class="nc" id="L902">                        arphost.getHostIP().getHostAddress());</span>
+<span class="nc" id="L903">                hostFinder.find(arphost.getHostIP());</span>
+            }
+        }
+<span class="nc" id="L906">    }</span>
+
+<span class="nc" id="L908">    class OutStandingARPHandler extends TimerTask {</span>
+        public void run() {
+            ARPPending arphost;
+            /* This routine runs every 4 seconds */
+            // logger.info (&quot;ARP Handler called&quot;);
+<span class="nc bnc" id="L913" title="All 2 branches missed.">            for (int i = 0; i &lt; ARPPendingList.size(); i++) {</span>
+<span class="nc" id="L914">                arphost = ARPPendingList.get(i);</span>
+<span class="nc bnc" id="L915" title="All 2 branches missed.">                if (arphost.getSent_count() &lt; switchManager.getHostRetryCount()) {</span>
+                    /*
+                     * No reply has been received of first ARP Req, send the
+                     * next one
+                     */
+<span class="nc" id="L920">                    hostFinder.find(arphost.getHostIP());</span>
+<span class="nc" id="L921">                    arphost.sent_count++;</span>
+<span class="nc" id="L922">                    logger.debug(&quot;ARP Sent from ARPPending List, IP: {}&quot;,</span>
+<span class="nc" id="L923">                            arphost.getHostIP().getHostAddress());</span>
+<span class="nc" id="L924">                } else if (arphost.getSent_count() &gt;= switchManager</span>
+<span class="nc bnc" id="L925" title="All 2 branches missed.">                        .getHostRetryCount()) {</span>
+                    /*
+                     * Two ARP requests have been sent without receiving a
+                     * reply, remove this from the pending list
+                     */
+<span class="nc" id="L930">                    removePendingARPFromList(i);</span>
+<span class="nc" id="L931">                    logger.debug(</span>
+<span class="nc" id="L932">                            &quot;ARP reply not received after two attempts, removing from Pending List IP: {}&quot;,</span>
+<span class="nc" id="L933">                            arphost.getHostIP().getHostAddress());</span>
+                    /*
+                     * Add this host to a different list which will be processed
+                     * on link up events
+                     */
+<span class="nc" id="L938">                    logger.debug(&quot;Adding the host to FailedARPReqList IP: {}&quot;,</span>
+<span class="nc" id="L939">                            arphost.getHostIP().getHostAddress());</span>
+<span class="nc" id="L940">                    failedARPReqList.add(arphost);</span>
+
+<span class="nc" id="L942">                } else {</span>
+<span class="nc" id="L943">                    logger.error(</span>
+<span class="nc" id="L944">                            &quot;Inavlid arp_sent count for entery at index: {}&quot;, i);</span>
+                }
+            }
+<span class="nc" id="L947">        }</span>
+    }
+
+<span class="nc" id="L950">    private class ARPRefreshHandler extends TimerTask {</span>
+        @SuppressWarnings(&quot;deprecation&quot;)
+        public void run() {
+<span class="nc bnc" id="L953" title="All 2 branches missed.">            if ((clusterContainerService != null)</span>
+<span class="nc bnc" id="L954" title="All 2 branches missed.">                    &amp;&amp; !clusterContainerService.amICoordinator()) {</span>
+<span class="nc" id="L955">                return;</span>
+            }
+<span class="nc bnc" id="L957" title="All 2 branches missed.">            if ((switchManager != null)</span>
+<span class="nc bnc" id="L958" title="All 2 branches missed.">                    &amp;&amp; !switchManager.isHostRefreshEnabled()) {</span>
+                /*
+                 * The host probe procedure was disabled by CLI
+                 */
+<span class="nc" id="L962">                return;</span>
+            }
+<span class="nc bnc" id="L964" title="All 2 branches missed.">            if (hostsDB == null) {</span>
+                /* hostsDB is not allocated yet */
+<span class="nc" id="L966">                logger.error(&quot;ARPRefreshHandler(): hostsDB is not allocated yet:&quot;);</span>
+<span class="nc" id="L967">                return;</span>
+            }
+<span class="nc bnc" id="L969" title="All 2 branches missed.">            for (Entry&lt;InetAddress, HostNodeConnector&gt; entry : hostsDB</span>
+<span class="nc" id="L970">                    .entrySet()) {</span>
+<span class="nc" id="L971">                HostNodeConnector host = entry.getValue();</span>
+<span class="nc bnc" id="L972" title="All 2 branches missed.">                if (host.isStaticHost()) {</span>
+                    /* this host was learned via API3, don't age it out */
+<span class="nc" id="L974">                    continue;</span>
+                }
+
+<span class="nc" id="L977">                short arp_cntdown = host.getArpSendCountDown();</span>
+<span class="nc" id="L978">                arp_cntdown--;</span>
+<span class="nc bnc" id="L979" title="All 2 branches missed.">                if (arp_cntdown &gt; switchManager.getHostRetryCount()) {</span>
+<span class="nc" id="L980">                    host.setArpSendCountDown(arp_cntdown);</span>
+<span class="nc bnc" id="L981" title="All 2 branches missed.">                } else if (arp_cntdown &lt;= 0) {</span>
+                    /*
+                     * No ARP Reply received in last 2 minutes, remove this host
+                     * and inform applications
+                     */
+<span class="nc" id="L986">                    removeKnownHost(entry.getKey());</span>
+<span class="nc" id="L987">                    notifyHostLearnedOrRemoved(host, false);</span>
+<span class="nc bnc" id="L988" title="All 2 branches missed.">                } else if (arp_cntdown &lt;= switchManager.getHostRetryCount()) {</span>
+                    /*
+                     * Use the services of arphandler to check if host is still
+                     * there
+                     */
+<span class="nc bnc" id="L993" title="All 2 branches missed.">                    if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L994">                        logger.trace(</span>
+<span class="nc" id="L995">                                &quot;ARP Probing ({}) for {}({})&quot;,</span>
+<span class="nc" id="L996">                                new Object[] {</span>
+<span class="nc" id="L997">                                        arp_cntdown,</span>
+<span class="nc" id="L998">                                        host.getNetworkAddress()</span>
+<span class="nc" id="L999">                                                .getHostAddress(),</span>
+<span class="nc" id="L1000">                                        HexEncode.bytesToHexString(host</span>
+<span class="nc" id="L1001">                                                .getDataLayerAddressBytes()) });</span>
+                    }
+<span class="nc" id="L1003">                    host.setArpSendCountDown(arp_cntdown);</span>
+<span class="nc" id="L1004">                    hostFinder.probe(host);</span>
+                }
+            }
+<span class="nc" id="L1007">        }</span>
+    }
+
+    /**
+     * Inform the controller IP to MAC binding of a host and its connectivity to
+     * an openflow switch in terms of Node, port, and VLAN.
+     *
+     * @param networkAddr
+     *            IP address of the host
+     * @param dataLayer
+     *            Address MAC address of the host
+     * @param nc
+     *            NodeConnector to which host is connected
+     * @param port
+     *            Port of the switch to which host is connected
+     * @param vlan
+     *            Vlan of which this host is member of
+     *
+     * @return Status The status object as described in {@code Status}
+     *         indicating the result of this action.
+     */
+
+    public Status addStaticHostReq(InetAddress networkAddr,
+            byte[] dataLayerAddress, NodeConnector nc, short vlan) {
+<span class="nc bnc" id="L1031" title="All 2 branches missed.">        if (dataLayerAddress.length != 6) {</span>
+<span class="nc" id="L1032">            return new Status(StatusCode.BADREQUEST, &quot;Invalid MAC address&quot;);</span>
+        }
+
+<span class="nc" id="L1035">        HostNodeConnector host = null;</span>
+        try {
+<span class="nc" id="L1037">            host = new HostNodeConnector(dataLayerAddress, networkAddr, nc,</span>
+<span class="nc" id="L1038">                    vlan);</span>
+<span class="nc bnc" id="L1039" title="All 2 branches missed.">            if (hostExists(host)) {</span>
+                // This host is already learned either via ARP or through a
+                // northbound request
+<span class="nc" id="L1042">                HostNodeConnector transHost = hostsDB.get(networkAddr);</span>
+<span class="nc" id="L1043">                transHost.setStaticHost(true);</span>
+<span class="nc" id="L1044">                return new Status(StatusCode.SUCCESS, null);</span>
+            }
+<span class="nc" id="L1046">            host.setStaticHost(true);</span>
+            /*
+             * Before adding host, Check if the switch and the port have already
+             * come up
+             */
+<span class="nc bnc" id="L1051" title="All 2 branches missed.">            if (switchManager.isNodeConnectorEnabled(nc)) {</span>
+<span class="nc" id="L1052">                learnNewHost(host);</span>
+<span class="nc" id="L1053">                notifyHostLearnedOrRemoved(host, true);</span>
+<span class="nc" id="L1054">            } else {</span>
+<span class="nc" id="L1055">                inactiveStaticHosts.put(nc, host);</span>
+<span class="nc" id="L1056">                logger.debug(</span>
+<span class="nc" id="L1057">                        &quot;Switch or switchport is not up, adding host {} to inactive list&quot;,</span>
+<span class="nc" id="L1058">                        networkAddr.getHostName());</span>
+            }
+<span class="nc" id="L1060">            return new Status(StatusCode.SUCCESS, null);</span>
+<span class="nc" id="L1061">        } catch (ConstructionException e) {</span>
+<span class="nc" id="L1062">            return new Status(StatusCode.INTERNALERROR,</span>
+<span class="nc" id="L1063">                    &quot;Host could not be created&quot;);</span>
+        }
+
+    }
+
+    /**
+     * Update the controller IP to MAC binding of a host and its connectivity to
+     * an openflow switch in terms of switch id, switch port, and VLAN.
+     *
+     * @param networkAddr
+     *            IP address of the host
+     * @param dataLayer
+     *            Address MAC address of the host
+     * @param nc
+     *            NodeConnector to which host is connected
+     * @param port
+     *            Port of the switch to which host is connected
+     * @param vlan
+     *            Vlan of which this host is member of
+     *
+     * @return boolean true if the host was added successfully, false otherwise
+     */
+    public boolean updateHostReq(InetAddress networkAddr,
+            byte[] dataLayerAddress, NodeConnector nc, short vlan) {
+<span class="nc bnc" id="L1087" title="All 2 branches missed.">        if (nc == null) {</span>
+<span class="nc" id="L1088">            return false;</span>
+        }
+<span class="nc" id="L1090">        HostNodeConnector host = null;</span>
+        try {
+<span class="nc" id="L1092">            host = new HostNodeConnector(dataLayerAddress, networkAddr, nc,</span>
+<span class="nc" id="L1093">                    vlan);</span>
+<span class="nc bnc" id="L1094" title="All 2 branches missed.">            if (!hostExists(host)) {</span>
+<span class="nc bnc" id="L1095" title="All 2 branches missed.">                if ((inactiveStaticHosts.get(nc)) != null) {</span>
+<span class="nc" id="L1096">                    inactiveStaticHosts.replace(nc, host);</span>
+<span class="nc" id="L1097">                    return true;</span>
+                }
+<span class="nc" id="L1099">                return false;</span>
+            }
+<span class="nc" id="L1101">            hostsDB.replace(networkAddr, host);</span>
+<span class="nc" id="L1102">            return true;</span>
+<span class="nc" id="L1103">        } catch (ConstructionException e) {</span>
+        }
+<span class="nc" id="L1105">        return false;</span>
+    }
+
+    /**
+     * Remove from the controller IP to MAC binding of a host and its
+     * connectivity to an openflow switch
+     *
+     * @param networkAddr
+     *            IP address of the host
+     *
+     * @return boolean true if the host was removed successfully, false
+     *         otherwise
+     */
+
+    public Status removeStaticHostReq(InetAddress networkAddress) {
+        // Check if host is in active hosts database
+<span class="nc" id="L1121">        HostNodeConnector host = getHostFromOnActiveDB(networkAddress);</span>
+<span class="nc bnc" id="L1122" title="All 2 branches missed.">        if (host != null) {</span>
+            // Validation check
+<span class="nc bnc" id="L1124" title="All 2 branches missed.">            if (!host.isStaticHost()) {</span>
+<span class="nc" id="L1125">                return new Status(StatusCode.FORBIDDEN, &quot;Host &quot;</span>
+<span class="nc" id="L1126">                        + networkAddress.getHostName() + &quot; is not static&quot;);</span>
+            }
+            // Remove and notify
+<span class="nc" id="L1129">            notifyHostLearnedOrRemoved(host, false);</span>
+<span class="nc" id="L1130">            removeKnownHost(networkAddress);</span>
+<span class="nc" id="L1131">            return new Status(StatusCode.SUCCESS, null);</span>
+        }
+
+        // Check if host is in inactive hosts database
+<span class="nc" id="L1135">        Entry&lt;NodeConnector, HostNodeConnector&gt; entry = getHostFromInactiveDB(networkAddress);</span>
+<span class="nc bnc" id="L1136" title="All 2 branches missed.">        if (entry != null) {</span>
+<span class="nc" id="L1137">            host = entry.getValue();</span>
+            // Validation check
+<span class="nc bnc" id="L1139" title="All 2 branches missed.">            if (!host.isStaticHost()) {</span>
+<span class="nc" id="L1140">                return new Status(StatusCode.FORBIDDEN, &quot;Host &quot;</span>
+<span class="nc" id="L1141">                        + networkAddress.getHostName() + &quot; is not static&quot;);</span>
+            }
+<span class="nc" id="L1143">            this.removeHostFromInactiveDB(networkAddress);</span>
+<span class="nc" id="L1144">            return new Status(StatusCode.SUCCESS, null);</span>
+        }
+
+        // Host is neither in active nor inactive hosts database
+<span class="nc" id="L1148">        return new Status(StatusCode.NOTFOUND, &quot;Host does not exist&quot;);</span>
+    }
+
+    @Override
+    public void modeChangeNotify(Node node, boolean proactive) {
+<span class="nc" id="L1153">        logger.debug(&quot;Set Switch {} Mode to {}&quot;, node.getID(), proactive);</span>
+<span class="nc" id="L1154">    }</span>
+
+    @Override
+    public void notifyNode(Node node, UpdateType type,
+            Map&lt;String, Property&gt; propMap) {
+<span class="nc bnc" id="L1159" title="All 2 branches missed.">        if (node == null)</span>
+<span class="nc" id="L1160">            return;</span>
+
+<span class="nc bnc" id="L1162" title="All 2 branches missed.">        switch (type) {</span>
+        case REMOVED:
+<span class="nc" id="L1164">            logger.debug(&quot;Received removed node {}&quot;, node);</span>
+<span class="nc bnc" id="L1165" title="All 2 branches missed.">            for (Entry&lt;InetAddress, HostNodeConnector&gt; entry : hostsDB</span>
+<span class="nc" id="L1166">                    .entrySet()) {</span>
+<span class="nc" id="L1167">                HostNodeConnector host = entry.getValue();</span>
+<span class="nc bnc" id="L1168" title="All 2 branches missed.">                if (host.getnodeconnectorNode().equals(node)) {</span>
+<span class="nc" id="L1169">                    logger.debug(&quot;Node: {} is down, remove from Hosts_DB&quot;, node);</span>
+<span class="nc" id="L1170">                    removeKnownHost(entry.getKey());</span>
+<span class="nc" id="L1171">                    notifyHostLearnedOrRemoved(host, false);</span>
+                }
+            }
+<span class="nc" id="L1174">            break;</span>
+        default:
+            break;
+        }
+<span class="nc" id="L1178">    }</span>
+
+    @Override
+    public void notifyNodeConnector(NodeConnector nodeConnector,
+            UpdateType type, Map&lt;String, Property&gt; propMap) {
+<span class="nc bnc" id="L1183" title="All 2 branches missed.">        if (nodeConnector == null)</span>
+<span class="nc" id="L1184">            return;</span>
+
+<span class="nc" id="L1186">        boolean up = false;</span>
+<span class="nc bnc" id="L1187" title="All 4 branches missed.">        switch (type) {</span>
+        case ADDED:
+<span class="nc" id="L1189">            up = true;</span>
+<span class="nc" id="L1190">            break;</span>
+        case REMOVED:
+<span class="nc" id="L1192">            break;</span>
+        case CHANGED:
+<span class="nc" id="L1194">            State state = (State) propMap.get(State.StatePropName);</span>
+<span class="nc bnc" id="L1195" title="All 4 branches missed.">            if ((state != null) &amp;&amp; (state.getValue() == State.EDGE_UP)) {</span>
+<span class="nc" id="L1196">                up = true;</span>
+            }
+<span class="nc" id="L1198">            break;</span>
+        default:
+<span class="nc" id="L1200">            return;</span>
+        }
+
+<span class="nc bnc" id="L1203" title="All 2 branches missed.">        if (up) {</span>
+<span class="nc" id="L1204">            handleNodeConnectorStatusUp(nodeConnector);</span>
+<span class="nc" id="L1205">        } else {</span>
+<span class="nc" id="L1206">            handleNodeConnectorStatusDown(nodeConnector);</span>
+        }
+<span class="nc" id="L1208">    }</span>
+
+    @Override
+    public Status addStaticHost(String networkAddress, String dataLayerAddress,
+            NodeConnector nc, String vlan) {
+        try {
+<span class="nc" id="L1214">            InetAddress ip = InetAddress.getByName(networkAddress);</span>
+<span class="nc bnc" id="L1215" title="All 2 branches missed.">            if (nc == null) {</span>
+<span class="nc" id="L1216">                return new Status(StatusCode.BADREQUEST, &quot;Invalid NodeId&quot;);</span>
+            }
+<span class="nc" id="L1218">            return addStaticHostReq(ip,</span>
+<span class="nc" id="L1219">                    HexEncode.bytesFromHexString(dataLayerAddress), nc,</span>
+<span class="nc" id="L1220">                    Short.valueOf(vlan));</span>
+<span class="nc" id="L1221">        } catch (UnknownHostException e) {</span>
+<span class="nc" id="L1222">            logger.error(&quot;&quot;, e);</span>
+<span class="nc" id="L1223">            return new Status(StatusCode.BADREQUEST, &quot;Invalid Address&quot;);</span>
+        }
+    }
+
+    @Override
+    public Status removeStaticHost(String networkAddress) {
+        InetAddress address;
+        try {
+<span class="nc" id="L1231">            address = InetAddress.getByName(networkAddress);</span>
+<span class="nc" id="L1232">            return removeStaticHostReq(address);</span>
+<span class="nc" id="L1233">        } catch (UnknownHostException e) {</span>
+<span class="nc" id="L1234">            logger.error(&quot;&quot;, e);</span>
+<span class="nc" id="L1235">            return new Status(StatusCode.BADREQUEST, &quot;Invalid Address&quot;);</span>
+        }
+    }
+
+    private void handleNodeConnectorStatusUp(NodeConnector nodeConnector) {
+        ARPPending arphost;
+
+<span class="nc" id="L1242">        logger.debug(&quot;handleNodeConnectorStatusUp {}&quot;, nodeConnector);</span>
+
+<span class="nc bnc" id="L1244" title="All 2 branches missed.">        for (int i = 0; i &lt; failedARPReqList.size(); i++) {</span>
+<span class="nc" id="L1245">            arphost = failedARPReqList.get(i);</span>
+<span class="nc" id="L1246">            logger.debug(&quot;Sending the ARP from FailedARPReqList fors IP: {}&quot;,</span>
+<span class="nc" id="L1247">                    arphost.getHostIP().getHostAddress());</span>
+<span class="nc" id="L1248">            hostFinder.find(arphost.getHostIP());</span>
+        }
+<span class="nc" id="L1250">        HostNodeConnector host = inactiveStaticHosts.get(nodeConnector);</span>
+<span class="nc bnc" id="L1251" title="All 2 branches missed.">        if (host != null) {</span>
+<span class="nc" id="L1252">            inactiveStaticHosts.remove(nodeConnector);</span>
+<span class="nc" id="L1253">            learnNewHost(host);</span>
+<span class="nc" id="L1254">            notifyHostLearnedOrRemoved(host, true);</span>
+        }
+<span class="nc" id="L1256">    }</span>
+
+    private void handleNodeConnectorStatusDown(NodeConnector nodeConnector) {
+<span class="nc" id="L1259">        logger.debug(&quot;handleNodeConnectorStatusDown {}&quot;, nodeConnector);</span>
+
+<span class="nc bnc" id="L1261" title="All 2 branches missed.">        for (Entry&lt;InetAddress, HostNodeConnector&gt; entry : hostsDB.entrySet()) {</span>
+<span class="nc" id="L1262">            HostNodeConnector host = entry.getValue();</span>
+<span class="nc bnc" id="L1263" title="All 2 branches missed.">            if (host.getnodeConnector().equals(nodeConnector)) {</span>
+<span class="nc" id="L1264">                logger.debug(</span>
+<span class="nc" id="L1265">                        &quot; NodeConnector: {} is down, remove from Hosts_DB&quot;,</span>
+<span class="nc" id="L1266">                        nodeConnector);</span>
+<span class="nc" id="L1267">                removeKnownHost(entry.getKey());</span>
+<span class="nc" id="L1268">                notifyHostLearnedOrRemoved(host, false);</span>
+            }
+        }
+<span class="nc" id="L1271">    }</span>
+
+    void setClusterContainerService(IClusterContainerServices s) {
+<span class="nc" id="L1274">        logger.debug(&quot;Cluster Service set&quot;);</span>
+<span class="nc" id="L1275">        this.clusterContainerService = s;</span>
+<span class="nc" id="L1276">    }</span>
+
+    void unsetClusterContainerService(IClusterContainerServices s) {
+<span class="nc bnc" id="L1279" title="All 2 branches missed.">        if (this.clusterContainerService == s) {</span>
+<span class="nc" id="L1280">            logger.debug(&quot;Cluster Service removed!&quot;);</span>
+<span class="nc" id="L1281">            this.clusterContainerService = null;</span>
+        }
+<span class="nc" id="L1283">    }</span>
+
+    void setSwitchManager(ISwitchManager s) {
+<span class="nc" id="L1286">        logger.debug(&quot;SwitchManager set&quot;);</span>
+<span class="nc" id="L1287">        this.switchManager = s;</span>
+<span class="nc" id="L1288">    }</span>
+
+    void unsetSwitchManager(ISwitchManager s) {
+<span class="nc bnc" id="L1291" title="All 2 branches missed.">        if (this.switchManager == s) {</span>
+<span class="nc" id="L1292">            logger.debug(&quot;SwitchManager removed!&quot;);</span>
+<span class="nc" id="L1293">            this.switchManager = null;</span>
+        }
+<span class="nc" id="L1295">    }</span>
+
+    public String getContainerName() {
+<span class="nc bnc" id="L1298" title="All 2 branches missed.">        if (containerName == null)</span>
+<span class="nc" id="L1299">            return GlobalConstants.DEFAULT.toString();</span>
+<span class="nc" id="L1300">        return containerName;</span>
+    }
+
+    /**
+     * Function called by the dependency manager when all the required
+     * dependencies are satisfied
+     *
+     */
+    void init(Component c) {
+<span class="nc" id="L1309">        Dictionary&lt;?, ?&gt; props = c.getServiceProperties();</span>
+<span class="nc bnc" id="L1310" title="All 2 branches missed.">        if (props != null) {</span>
+<span class="nc" id="L1311">            this.containerName = (String) props.get(&quot;containerName&quot;);</span>
+<span class="nc" id="L1312">            logger.debug(&quot;Running containerName: {}&quot;, this.containerName);</span>
+<span class="nc" id="L1313">        } else {</span>
+            // In the Global instance case the containerName is empty
+<span class="nc" id="L1315">            this.containerName = &quot;&quot;;</span>
+        }
+<span class="nc" id="L1317">        startUp();</span>
+<span class="nc" id="L1318">    }</span>
+
+    /**
+     * Function called by the dependency manager when at least one dependency
+     * become unsatisfied or when the component is shutting down because for
+     * example bundle is being stopped.
+     *
+     */
+    void destroy() {
+<span class="nc" id="L1327">        destroyCache();</span>
+<span class="nc" id="L1328">    }</span>
+
+    /**
+     * Function called by dependency manager after &quot;init ()&quot; is called and after
+     * the services provided by the class are registered in the service registry
+     *
+     */
+    void start() {
+<span class="nc" id="L1336">    }</span>
+
+    /**
+     * Function called by the dependency manager before the services exported by
+     * the component are unregistered, this will be followed by a &quot;destroy ()&quot;
+     * calls
+     *
+     */
+    void stop() {
+<span class="nc" id="L1345">    }</span>
+
+    @Override
+    public void edgeOverUtilized(Edge edge) {
+        // TODO Auto-generated method stub
+
+<span class="nc" id="L1351">    }</span>
+
+    @Override
+    public void edgeUtilBackToNormal(Edge edge) {
+        // TODO Auto-generated method stub
+
+<span class="nc" id="L1357">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

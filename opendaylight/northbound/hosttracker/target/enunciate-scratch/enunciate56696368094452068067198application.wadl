@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wadl:application xmlns:wadl="http://wadl.dev.java.net/2009/02" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <wadl:doc xmlns:enunciate="http://enunciate.codehaus.org/" enunciate:generatedBy="Enunciate-1.26.1"/>
+  <wadl:grammars>
+    <wadl:include href="ns0.xsd"/>
+  </wadl:grammars>
+  <wadl:resources base="http://localhost:8080/full">
+    <wadl:resource path="/controller/nb/v2/host/{containerName}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of all Hosts : both configured via PUT API and dynamically
+learnt on the network.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[List of Active Hosts.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="hosts"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/host/{containerName}/inactive">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of Hosts that are statically configured and are connected
+to a NodeConnector that is down.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[List of inactive Hosts.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="hosts"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/host/{containerName}/{networkAddress}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="networkAddress" style="template">
+        <wadl:doc>
+          <![CDATA[IP Address being looked up]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a host that matches the IP Address value passed as parameter.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[host that matches the IP Address]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="host"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+      <wadl:method name="POST">
+        <wadl:doc>
+          <![CDATA[Add a Static Host configuration]]>
+        </wadl:doc>
+        <wadl:request>
+          <wadl:param name="dataLayerAddress" style="query">
+            <wadl:doc>
+              <![CDATA[Host L2 data-layer address.]]>
+            </wadl:doc>
+          </wadl:param>
+          <wadl:param name="nodeType" style="query">
+            <wadl:doc>
+              <![CDATA[Node Type as specifid by Node class]]>
+            </wadl:doc>
+          </wadl:param>
+          <wadl:param name="nodeId" style="query">
+            <wadl:doc>
+              <![CDATA[Node Identifier as specifid by Node class]]>
+            </wadl:doc>
+          </wadl:param>
+          <wadl:param name="nodeConnectorType" style="query">
+            <wadl:doc>
+              <![CDATA[Port Type as specified by NodeConnector class]]>
+            </wadl:doc>
+          </wadl:param>
+          <wadl:param name="nodeConnectorId" style="query">
+            <wadl:doc>
+              <![CDATA[Port Identifier as specified by NodeConnector class]]>
+            </wadl:doc>
+          </wadl:param>
+          <wadl:param name="vlan" style="query">
+            <wadl:doc>
+              <![CDATA[Vlan number]]>
+            </wadl:doc>
+          </wadl:param>
+        </wadl:request>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response Status code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+      <wadl:method name="DELETE">
+        <wadl:doc>
+          <![CDATA[Delete a Static Host configuration]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response code.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+  </wadl:resources>
+</wadl:application>

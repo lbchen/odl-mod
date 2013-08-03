@@ -1,0 +1,18 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375489185061
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-ManifestVersion: 2
+Bundle-Name: containermanager
+Bundle-SymbolicName: org.opendaylight.controller.containermanager
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Export-Package: org.opendaylight.controller.containermanager;uses:="org.
+ opendaylight.controller.sal.authorization,org.opendaylight.controller.s
+ al.utils";version="0.4.0.SNAPSHOT"
+Import-Package: org.apache.commons.lang3.builder;version="[3.1,4)",org.o
+ pendaylight.controller.sal.action,org.opendaylight.controller.sal.autho
+ rization,org.opendaylight.controller.sal.core,org.opendaylight.controll
+ er.sal.flowprogrammer,org.opendaylight.controller.sal.match,org.openday
+ light.controller.sal.reader,org.opendaylight.controller.sal.utils
+Tool: Bnd-1.50.0

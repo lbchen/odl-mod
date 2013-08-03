@@ -1,0 +1,26 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375489164515
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-Description: A Java implemention of the OpenFlow v1.0 protocol
+Bundle-License: http://www.openflowswitch.org/wp/legal/
+Bundle-ManifestVersion: 2
+Bundle-Name: OpenFlow Java
+Bundle-SymbolicName: org.opendaylight.controller.thirdparty.org.openflow
+ .openflowj
+Bundle-Version: 1.0.2.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Export-Package: org.openflow.example;uses:="org.openflow.example.cli,org
+ .openflow.protocol,org.openflow.io,org.openflow.protocol.factory";versi
+ on="1.0.1",org.openflow.io;uses:="org.openflow.protocol,org.openflow.pr
+ otocol.factory";version="1.0.1",org.openflow.protocol;uses:="org.openfl
+ ow.protocol.statistics,org.openflow.protocol,org.openflow.protocol.fact
+ ory";version="1.0.1",org.openflow.protocol.action;uses:="org.openflow.p
+ rotocol";version="1.0.1",org.openflow.protocol.factory;uses:="org.openf
+ low.protocol.statistics,org.openflow.protocol,org.openflow.protocol.act
+ ion,org.openflow.protocol.queue";version="1.0.1",org.openflow.protocol.
+ queue;uses:="org.openflow.protocol,org.openflow.protocol.factory";versi
+ on="1.0.2",org.openflow.protocol.statistics;uses:="org.openflow.protoco
+ l,org.openflow.protocol.factory";version="1.0.1",org.openflow.util;vers
+ ion="1.0.1"
+Tool: Bnd-1.50.0

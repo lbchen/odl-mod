@@ -1,0 +1,553 @@
+<!doctype html>
+<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
+<!--[if lt IE 7 ]> <html class="no-js ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]>    <html class="no-js ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]>    <html class="no-js ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+
+  <!-- Always force latest IE rendering engine (even in intranet) & Chrome Frame
+       Remove this if you use the .htaccess -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <title>StatisticsNorthbound</title>
+
+  <!-- Mobile viewport optimized: j.mp/bplateviewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- CSS: implied media="all" -->
+  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/prettify.css">
+
+  <!-- All JavaScript at the bottom, except for Modernizr which enables HTML5 elements & feature detects -->
+  <script src="js/libs/modernizr-1.7.min.js"></script>
+
+</head>
+
+<body class="home">
+
+  <div class="container">
+    <header>
+      <div id="header" class="column first last span-20">
+        <div id="site-name" class="column span-18 append-1 prepend-1 first last"><a href="index.html">StatisticsNorthbound</a></div>
+        <div id="primary" class="column span-18 append-1 prepend-1 first last">
+          <ul class="navigation">
+            <li id="nav-rest"><a href="rest.html">REST</a></li>
+            <li id="nav-data"><a href="model.html">Data Model</a></li>
+            <li id="nav-downloads"><a href="downloads.html">Files and Libraries</a></li>
+          </ul>
+        </div>
+        <div>
+          <ul class="xbreadcrumbs" id="breadcrumbs">
+            <li>
+              <a href="index.html" class="home">Home</a> &gt;
+            </li>
+            <li>
+              <a href="rest.html">REST</a> &gt;
+              <ul>
+                <li><a href="model.html">Data Model</a></li>
+                <li><a href="downloads.html">Files and Libraries</a></li>
+                <li><a href="rest.html">REST</a></li>
+              </ul>
+            </li>
+            <li class="current">
+              <a href="resource_StatisticsNorthbound.html">StatisticsNorthbound</a>
+              <ul>
+                <li><a href="resource_StatisticsNorthbound.html">StatisticsNorthbound</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+    <div id="main" class="column first last span-20">
+      <h1>StatisticsNorthbound</h1>
+
+      <p>Northbound APIs that returns various Statistics exposed by the Southbound
+plugins such as Openflow.
+
+<br>
+<br>
+Authentication scheme : <b>HTTP Basic</b><br>
+Authentication realm : <b>opendaylight</b><br>
+Transport : <b>HTTP and HTTPS</b><br>
+<br>
+HTTPS Authentication is disabled by default. Administrator can enable it in
+tomcat-server.xml after adding a proper keystore / SSL certificate from a
+trusted authority.<br>
+More info :
+http://tomcat.apache.org/tomcat-7.0-doc/ssl-howto.html#Configuration</p>
+      <p>The following resources are part of this group:</p>
+      <ul>
+        <li><a href="#path__-containerName-_flowstats.html">/{containerName}/flowstats</a></li>
+        <li><a href="#path__-containerName-_portstats.html">/{containerName}/portstats</a></li>
+        <li><a href="#path__-containerName-_tablestats.html">/{containerName}/tablestats</a></li>
+        <li><a href="#path__-containerName-_flowstats_-nodeType-_-nodeId-.html">/{containerName}/flowstats/{nodeType}/{nodeId}</a></li>
+        <li><a href="#path__-containerName-_portstats_-nodeType-_-nodeId-.html">/{containerName}/portstats/{nodeType}/{nodeId}</a></li>
+        <li><a href="#path__-containerName-_tablestats_-nodeType-_-nodeId-.html">/{containerName}/tablestats/{nodeType}/{nodeId}</a></li>
+      </ul>
+      <a name="path__-containerName-_flowstats.html"></a>
+      <h1>/{containerName}/flowstats</h1>
+      <p class="note">Mount Point: <a href="../controller/nb/v2/statistics/{containerName}/flowstats">/controller/nb/v2/statistics/{containerName}/flowstats</a></p>
+      <a name="GET"></a>
+      <h2>GET</h2>
+      <p>
+            Returns a list of all Flow Statistics from all the Nodes.
+          </p>
+      <h3>Parameters</h3>
+      <table>
+        <tr>
+          <th>name</th>
+          <th>description</th>
+          <th>type</th>
+          <th>default</th>
+        </tr>
+        <tr>
+          <td>containerName</td>
+          <td>
+            Name of the Container. The Container name for the base controller is "default".
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+      </table>
+      <h3>Response Body</h3>
+      <table>
+        <tr>
+          <td align="right">element:</td>
+          <td><a href="el_ns0_allFlowStatistics.html">allFlowStatistics</a></td>
+        </tr>
+        <tr>
+          <td align="right">media types:</td>
+          <td>application/xml<br/>application/json</td>
+        </tr>
+      </table>
+      <p>List of FlowStatistics from all the Nodes</p>
+      <h3>Status Codes</h3>
+      <table>
+        <tr>
+          <th>code</th>
+          <th>description</th>
+        </tr>
+        <tr>
+          <td>200</td>
+          <td>
+            Operation successful
+          </td>
+        </tr>
+        <tr>
+          <td>404</td>
+          <td>
+            The containerName is not found
+          </td>
+        </tr>
+        <tr>
+          <td>503</td>
+          <td>
+            One or more of Controller Services are unavailable
+          </td>
+        </tr>
+      </table>
+      <a name="path__-containerName-_portstats.html"></a>
+      <h1>/{containerName}/portstats</h1>
+      <p class="note">Mount Point: <a href="../controller/nb/v2/statistics/{containerName}/portstats">/controller/nb/v2/statistics/{containerName}/portstats</a></p>
+      <a name="GET"></a>
+      <h2>GET</h2>
+      <p>
+            Returns a list of all the Port Statistics across all the NodeConnectors
+on all the Nodes.
+          </p>
+      <h3>Parameters</h3>
+      <table>
+        <tr>
+          <th>name</th>
+          <th>description</th>
+          <th>type</th>
+          <th>default</th>
+        </tr>
+        <tr>
+          <td>containerName</td>
+          <td>
+            Name of the Container. The Container name for the base controller is "default".
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+      </table>
+      <h3>Response Body</h3>
+      <table>
+        <tr>
+          <td align="right">element:</td>
+          <td><a href="el_ns0_allPortStatistics.html">allPortStatistics</a></td>
+        </tr>
+        <tr>
+          <td align="right">media types:</td>
+          <td>application/xml<br/>application/json</td>
+        </tr>
+      </table>
+      <p>List of all the Port Statistics across all the NodeConnectors on
+all the Nodes.</p>
+      <h3>Status Codes</h3>
+      <table>
+        <tr>
+          <th>code</th>
+          <th>description</th>
+        </tr>
+        <tr>
+          <td>200</td>
+          <td>
+            Operation successful
+          </td>
+        </tr>
+        <tr>
+          <td>404</td>
+          <td>
+            The containerName is not found
+          </td>
+        </tr>
+        <tr>
+          <td>503</td>
+          <td>
+            One or more of Controller Services are unavailable
+          </td>
+        </tr>
+      </table>
+      <a name="path__-containerName-_tablestats.html"></a>
+      <h1>/{containerName}/tablestats</h1>
+      <p class="note">Mount Point: <a href="../controller/nb/v2/statistics/{containerName}/tablestats">/controller/nb/v2/statistics/{containerName}/tablestats</a></p>
+      <a name="GET"></a>
+      <h2>GET</h2>
+      <p>
+            Returns a list of all the Table Statistics on all Nodes.
+          </p>
+      <h3>Parameters</h3>
+      <table>
+        <tr>
+          <th>name</th>
+          <th>description</th>
+          <th>type</th>
+          <th>default</th>
+        </tr>
+        <tr>
+          <td>containerName</td>
+          <td>
+            Name of the Container. The Container name for the base controller is "default".
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+      </table>
+      <h3>Response Body</h3>
+      <table>
+        <tr>
+          <td align="right">element:</td>
+          <td><a href="el_ns0_tableStatistics.html">tableStatistics</a></td>
+        </tr>
+        <tr>
+          <td align="right">media types:</td>
+          <td>application/xml<br/>application/json</td>
+        </tr>
+      </table>
+      <p>Returns a list of all the Table Statistics in a given Node.</p>
+      <h3>Status Codes</h3>
+      <table>
+        <tr>
+          <th>code</th>
+          <th>description</th>
+        </tr>
+        <tr>
+          <td>200</td>
+          <td>
+            Operation successful
+          </td>
+        </tr>
+        <tr>
+          <td>404</td>
+          <td>
+            The containerName is not found
+          </td>
+        </tr>
+        <tr>
+          <td>503</td>
+          <td>
+            One or more of Controller Services are unavailable
+          </td>
+        </tr>
+      </table>
+      <a name="path__-containerName-_flowstats_-nodeType-_-nodeId-.html"></a>
+      <h1>/{containerName}/flowstats/{nodeType}/{nodeId}</h1>
+      <p class="note">Mount Point: <a href="../controller/nb/v2/statistics/{containerName}/flowstats/{nodeType}/{nodeId}">/controller/nb/v2/statistics/{containerName}/flowstats/{nodeType}/{nodeId}</a></p>
+      <a name="GET"></a>
+      <h2>GET</h2>
+      <p>
+            Returns a list of Flow Statistics for a given Node.
+          </p>
+      <h3>Parameters</h3>
+      <table>
+        <tr>
+          <th>name</th>
+          <th>description</th>
+          <th>type</th>
+          <th>default</th>
+        </tr>
+        <tr>
+          <td>containerName</td>
+          <td>
+            Name of the Container. The Container name for the base controller is "default".
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>nodeType</td>
+          <td>
+            Node Type as specifid by Node class
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>nodeId</td>
+          <td>
+            Node Identifier
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+      </table>
+      <h3>Response Body</h3>
+      <table>
+        <tr>
+          <td align="right">element:</td>
+          <td><a href="el_ns0_flowStatistics.html">flowStatistics</a></td>
+        </tr>
+        <tr>
+          <td align="right">media types:</td>
+          <td>application/xml<br/>application/json</td>
+        </tr>
+      </table>
+      <p>List of Flow Statistics for a given Node.</p>
+      <h3>Status Codes</h3>
+      <table>
+        <tr>
+          <th>code</th>
+          <th>description</th>
+        </tr>
+        <tr>
+          <td>200</td>
+          <td>
+            Operation successful
+          </td>
+        </tr>
+        <tr>
+          <td>404</td>
+          <td>
+            The containerName is not found
+          </td>
+        </tr>
+        <tr>
+          <td>503</td>
+          <td>
+            One or more of Controller Services are unavailable
+          </td>
+        </tr>
+      </table>
+      <a name="path__-containerName-_portstats_-nodeType-_-nodeId-.html"></a>
+      <h1>/{containerName}/portstats/{nodeType}/{nodeId}</h1>
+      <p class="note">Mount Point: <a href="../controller/nb/v2/statistics/{containerName}/portstats/{nodeType}/{nodeId}">/controller/nb/v2/statistics/{containerName}/portstats/{nodeType}/{nodeId}</a></p>
+      <a name="GET"></a>
+      <h2>GET</h2>
+      <p>
+            Returns a list of all the Port Statistics across all the NodeConnectors
+in a given Node.
+          </p>
+      <h3>Parameters</h3>
+      <table>
+        <tr>
+          <th>name</th>
+          <th>description</th>
+          <th>type</th>
+          <th>default</th>
+        </tr>
+        <tr>
+          <td>containerName</td>
+          <td>
+            Name of the Container. The Container name for the base controller is "default".
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>nodeType</td>
+          <td>
+            Node Type as specifid by Node class
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>nodeId</td>
+          <td>
+            (no documentation provided)
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+      </table>
+      <h3>Response Body</h3>
+      <table>
+        <tr>
+          <td align="right">element:</td>
+          <td><a href="el_ns0_portStatistics.html">portStatistics</a></td>
+        </tr>
+        <tr>
+          <td align="right">media types:</td>
+          <td>application/xml<br/>application/json</td>
+        </tr>
+      </table>
+      <p>Returns a list of all the Port Statistics across all the
+NodeConnectors in a given Node.</p>
+      <h3>Status Codes</h3>
+      <table>
+        <tr>
+          <th>code</th>
+          <th>description</th>
+        </tr>
+        <tr>
+          <td>200</td>
+          <td>
+            Operation successful
+          </td>
+        </tr>
+        <tr>
+          <td>404</td>
+          <td>
+            The containerName is not found
+          </td>
+        </tr>
+        <tr>
+          <td>503</td>
+          <td>
+            One or more of Controller Services are unavailable
+          </td>
+        </tr>
+      </table>
+      <a name="path__-containerName-_tablestats_-nodeType-_-nodeId-.html"></a>
+      <h1>/{containerName}/tablestats/{nodeType}/{nodeId}</h1>
+      <p class="note">Mount Point: <a href="../controller/nb/v2/statistics/{containerName}/tablestats/{nodeType}/{nodeId}">/controller/nb/v2/statistics/{containerName}/tablestats/{nodeType}/{nodeId}</a></p>
+      <a name="GET"></a>
+      <h2>GET</h2>
+      <p>
+            Returns a list of all the Table Statistics on all Nodes.
+          </p>
+      <h3>Parameters</h3>
+      <table>
+        <tr>
+          <th>name</th>
+          <th>description</th>
+          <th>type</th>
+          <th>default</th>
+        </tr>
+        <tr>
+          <td>containerName</td>
+          <td>
+            Name of the Container. The Container name for the base controller is "default".
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>nodeType</td>
+          <td>
+            Node Type as specifid by Node class
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>nodeId</td>
+          <td>
+            (no documentation provided)
+          </td>
+          <td>path</td>
+          <td></td>
+        </tr>
+      </table>
+      <h3>Response Body</h3>
+      <table>
+        <tr>
+          <td align="right">element:</td>
+          <td><a href="el_ns0_tableStatistics.html">tableStatistics</a></td>
+        </tr>
+        <tr>
+          <td align="right">media types:</td>
+          <td>application/xml<br/>application/json</td>
+        </tr>
+      </table>
+      <p>Returns a list of all the Table Statistics in a given Node.</p>
+      <h3>Status Codes</h3>
+      <table>
+        <tr>
+          <th>code</th>
+          <th>description</th>
+        </tr>
+        <tr>
+          <td>200</td>
+          <td>
+            Operation successful
+          </td>
+        </tr>
+        <tr>
+          <td>404</td>
+          <td>
+            The containerName is not found
+          </td>
+        </tr>
+        <tr>
+          <td>503</td>
+          <td>
+            One or more of Controller Services are unavailable
+          </td>
+        </tr>
+      </table>
+
+      <div class="clear" />
+    </div>
+    <footer>
+      <div id="footer">
+        Generated by <a href="http://enunciate.codehaus.org">Enunciate</a>.
+      </div>
+    </footer>
+  </div> <!--! end of #container -->
+
+  <!-- JavaScript at the bottom for fast page loading -->
+
+  <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if necessary -->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.js"></script>
+  <script>window.jQuery || document.write("<script src='js/libs/jquery-1.5.1.min.js'>\x3C/script>")</script>
+
+  <!--manage the navigation menu-->
+  <script src="js/libs/xbreadcrumbs.js"></script>
+  <script>
+    $(function() {
+      $('#breadcrumbs').xBreadcrumbs();
+    });
+  </script>
+
+
+  <!-- prettify code blocks. see http://code.google.com/p/google-code-prettify/ -->
+  <script src="js/libs/prettify/prettify.js"></script>
+  <script>
+    $(function() {
+      prettyPrint();
+    });
+  </script>
+
+  <!--[if lt IE 7 ]>
+    <script src="js/libs/dd_belatedpng.js"></script>
+    <script>DD_belatedPNG.fix("img, .png_bg"); // Fix any <img> or .png_bg bg-images. Also, please read goo.gl/mZiyb </script>
+  <![endif]-->
+
+</body>
+</html>

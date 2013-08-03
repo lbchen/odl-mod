@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema version="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="actions" type="actions"/>
+  <xs:element name="advertisedBandwidth" type="advertisedBandwidth"/>
+  <xs:element name="bandwidth" type="bandwidth"/>
+  <xs:element name="buffers" type="buffers"/>
+  <xs:element name="capabilities" type="capabilities"/>
+  <xs:element name="config" type="config"/>
+  <xs:element name="latency" type="latency"/>
+  <xs:element name="macAddress" type="macAddress"/>
+  <xs:element name="name" type="name"/>
+  <xs:element name="node" type="node"/>
+  <xs:element name="nodeConnector" type="nodeConnector"/>
+  <xs:element name="peerBandwidth" type="peerBandwidth"/>
+  <xs:element name="property" type="property"/>
+  <xs:element name="state" type="state"/>
+  <xs:element name="supportedBandwidth" type="supportedBandwidth"/>
+  <xs:element name="tables" type="tables"/>
+  <xs:element name="tier" type="tier"/>
+  <xs:element name="timeStamp" type="timeStamp"/>
+  <xs:element name="nodeConnectorProperties" type="nodeConnectorProperties"/>
+  <xs:element name="nodeConnectors" type="nodeConnectors"/>
+  <xs:element name="nodeProperties" type="nodeProperties"/>
+  <xs:element name="nodes" type="nodes"/>
+  <xs:complexType name="actions">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="actionsValue" type="xs:int" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="advertisedBandwidth">
+    <xs:complexContent>
+      <xs:extension base="bandwidth"/>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="bandwidth">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="bandwidthValue" type="xs:long" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="buffers">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="buffersValue" type="xs:int" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="capabilities">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="capabilitiesValue" type="xs:int" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="config">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="configValue" type="xs:short" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="latency">
+    <xs:complexContent>
+      <xs:extension base="property"/>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="macAddress">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="macAddress" type="xs:base64Binary" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="name">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="nameValue" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="node">
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="type" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="nodeConnector">
+    <xs:sequence>
+      <xs:element name="node" type="node" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="type" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="peerBandwidth">
+    <xs:complexContent>
+      <xs:extension base="bandwidth"/>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="property" abstract="true"/>
+  <xs:complexType name="state">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="stateValue" type="xs:short" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="supportedBandwidth">
+    <xs:complexContent>
+      <xs:extension base="bandwidth"/>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="tables">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="tablesValue" type="xs:byte" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="tier">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="tierValue" type="xs:int" minOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="timeStamp">
+    <xs:complexContent>
+      <xs:extension base="property">
+        <xs:sequence>
+          <xs:element name="timestamp" type="xs:long" minOccurs="1"/>
+          <xs:element name="timestampName" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="nodeConnectorProperties">
+    <xs:annotation>
+      <xs:documentation>
+        <![CDATA[The class describes set of properties attached to a node connector]]>
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="nodeconnector" type="nodeConnector" minOccurs="0"/>
+      <xs:element name="properties" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+              <xs:element ref="actions"/>
+              <xs:element ref="advertisedBandwidth"/>
+              <xs:element ref="bandwidth"/>
+              <xs:element ref="buffers"/>
+              <xs:element ref="capabilities"/>
+              <xs:element ref="config"/>
+              <xs:element ref="latency"/>
+              <xs:element ref="macAddress"/>
+              <xs:element ref="name"/>
+              <xs:element ref="peerBandwidth"/>
+              <xs:element ref="property"/>
+              <xs:element ref="state"/>
+              <xs:element ref="supportedBandwidth"/>
+              <xs:element ref="tables"/>
+              <xs:element ref="tier"/>
+              <xs:element ref="timeStamp"/>
+            </xs:choice>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="nodeConnectors">
+    <xs:sequence>
+      <xs:element name="nodeConnectorProperties" type="nodeConnectorProperties" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="nodeProperties">
+    <xs:annotation>
+      <xs:documentation>
+        <![CDATA[The class describes set of properties attached to a node]]>
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="node" type="node" minOccurs="0"/>
+      <xs:element name="properties" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+              <xs:element ref="actions"/>
+              <xs:element ref="advertisedBandwidth"/>
+              <xs:element ref="bandwidth"/>
+              <xs:element ref="buffers"/>
+              <xs:element ref="capabilities"/>
+              <xs:element ref="config"/>
+              <xs:element ref="latency"/>
+              <xs:element ref="macAddress"/>
+              <xs:element ref="name"/>
+              <xs:element ref="peerBandwidth"/>
+              <xs:element ref="property"/>
+              <xs:element ref="state"/>
+              <xs:element ref="supportedBandwidth"/>
+              <xs:element ref="tables"/>
+              <xs:element ref="tier"/>
+              <xs:element ref="timeStamp"/>
+            </xs:choice>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="nodes">
+    <xs:sequence>
+      <xs:element name="nodeProperties" type="nodeProperties" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wadl:application xmlns:wadl="http://wadl.dev.java.net/2009/02" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <wadl:doc xmlns:enunciate="http://enunciate.codehaus.org/" enunciate:generatedBy="Enunciate-1.26.1"/>
+  <wadl:grammars>
+    <wadl:include href="ns0.xsd"/>
+  </wadl:grammars>
+  <wadl:resources base="http://localhost:8080/full">
+    <wadl:resource path="/controller/nb/v2/flow/{containerName}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of Flows configured on the given container]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[List of configured flows configured on a given container]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="flowConfigs"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/flow/{containerName}/{nodeType}/{nodeId}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template">
+        <wadl:doc>
+          <![CDATA[Node Identifier]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns a list of Flows configured on a Node in a given container]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[List of configured flows configured on a Node in a container]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="flowConfigs"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/flow/{containerName}/{nodeType}/{nodeId}/{name}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template">
+        <wadl:doc>
+          <![CDATA[Node Identifier]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="name" style="template">
+        <wadl:doc>
+          <![CDATA[Human-readable name for the configured flow.]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Returns the flow configuration matching a human-readable name and nodeId
+on a given Container.]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Flow configuration matching the name and nodeId on a Container]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="flowConfig"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+      <wadl:method name="POST">
+        <wadl:doc>
+          <![CDATA[Add a flow configuration]]>
+        </wadl:doc>
+        <wadl:request>
+          <wadl:representation mediaType="application/xml" element="flowConfig"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:request>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response Status code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+      <wadl:method name="DELETE">
+        <wadl:doc>
+          <![CDATA[Delete a Flow configuration
+
+DELETE /flows/{containerName}/{nodeType}/{nodeId}/{name}]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+      <wadl:method name="PUT">
+        <wadl:doc>
+          <![CDATA[Toggle a Flow configuration]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+  </wadl:resources>
+</wadl:application>

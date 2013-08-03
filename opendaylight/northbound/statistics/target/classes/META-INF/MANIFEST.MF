@@ -1,0 +1,31 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375481157651
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-ManifestVersion: 2
+Bundle-Name: statistics.northbound
+Bundle-SymbolicName: org.opendaylight.controller.statistics.northbound
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Ignore-Package: org.codehaus.enunciate.jaxrs
+Import-Package: com.sun.jersey.spi.container.servlet;version="[1.17,2)",
+ javax.ws.rs;version="[1.1,2)",javax.ws.rs.core;version="[1.1,2)",javax.
+ xml.bind,javax.xml.bind.annotation,org.apache.commons.logging;version="
+ [1.1,2)",org.opendaylight.controller.containermanager;version="[0.4,1)"
+ ,org.opendaylight.controller.forwardingrulesmanager;version="[0.4,1)",o
+ rg.opendaylight.controller.northbound.commons;version="[0.4,1)",org.ope
+ ndaylight.controller.northbound.commons.exception;version="[0.4,1)",org
+ .opendaylight.controller.northbound.commons.utils;version="[0.4,1)",org
+ .opendaylight.controller.sal.action;version="[0.5,1)",org.opendaylight.
+ controller.sal.authorization;version="[0.5,1)",org.opendaylight.control
+ ler.sal.core;version="[0.5,1)",org.opendaylight.controller.sal.flowprog
+ rammer;version="[0.5,1)",org.opendaylight.controller.sal.match;version=
+ "[0.5,1)",org.opendaylight.controller.sal.packet;version="[0.5,1)",org.
+ opendaylight.controller.sal.reader;version="[0.5,1)",org.opendaylight.c
+ ontroller.sal.utils;version="[0.5,1)",org.opendaylight.controller.stati
+ sticsmanager;version="[0.4,1)",org.opendaylight.controller.switchmanage
+ r;version="[0.4,1)",org.opendaylight.controller.usermanager;version="[0
+ .4,1)",org.slf4j;version="[1.7,2)"
+Originally-Created-By: Apache Maven Bundle Plugin
+Tool: Bnd-1.50.0
+Web-ContextPath: /controller/nb/v2/statistics

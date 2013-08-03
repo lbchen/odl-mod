@@ -1,0 +1,22 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375489235203
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-ManifestVersion: 2
+Bundle-Name: commons.northbound
+Bundle-SymbolicName: org.opendaylight.controller.commons.northbound
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Export-Package: org.opendaylight.controller.northbound.commons.exception
+ ;uses:="javax.ws.rs,javax.ws.rs.core";version="0.4.0.SNAPSHOT",org.open
+ daylight.controller.northbound.commons.utils;uses:="javax.ws.rs.core,or
+ g.opendaylight.controller.sal.utils,org.opendaylight.controller.contain
+ ermanager,org.opendaylight.controller.sal.authorization,org.opendayligh
+ t.controller.usermanager";version="0.4.0.SNAPSHOT",org.opendaylight.con
+ troller.northbound.commons;version="0.4.0.SNAPSHOT"
+Import-Package: javax.servlet.http;version="[2.6,3)",javax.ws.rs;version
+ ="[1.1,2)",javax.ws.rs.core;version="[1.1,2)",org.opendaylight.controll
+ er.containermanager,org.opendaylight.controller.sal.authorization,org.o
+ pendaylight.controller.sal.utils,org.opendaylight.controller.usermanage
+ r,org.slf4j;version="[1.7,2)"
+Tool: Bnd-1.50.0

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DeviceIterator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker_new.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">DeviceIterator.java</span></div><h1>DeviceIterator.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2012 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ *
+ *      http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *    Originally created by David Erickson, Stanford University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ *    you may not use this file except in compliance with the
+ *    License. You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing,
+ *    software distributed under the License is distributed on an &quot;AS
+ *    IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ *    express or implied. See the License for the specific language
+ *    governing permissions and limitations under the License.
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import java.util.Arrays;
+import java.util.Iterator;
+
+import org.opendaylight.controller.hosttracker.IEntityClass;
+import org.opendaylight.controller.hosttracker.SwitchPort;
+import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.utils.FilterIterator;
+
+/**
+ * An iterator for handling device queries
+ */
+public class DeviceIterator extends FilterIterator&lt;Device&gt; {
+    private IEntityClass[] entityClasses;
+
+    private Long macAddress;
+    private Short vlan;
+    private Integer ipv4Address;
+    private NodeConnector port;
+
+    /**
+     * Construct a new device iterator over the key fields
+     *
+     * @param subIterator
+     *            an iterator over the full data structure to scan
+     * @param entityClasses
+     *            the entity classes to search for
+     * @param macAddress
+     *            The MAC address
+     * @param vlan
+     *            the VLAN
+     * @param ipv4Address
+     *            the ipv4 address
+     * @param switchDPID
+     *            the switch DPID
+     * @param switchPort
+     *            the switch port
+     */
+    public DeviceIterator(Iterator&lt;Device&gt; subIterator,
+            IEntityClass[] entityClasses, Long macAddress, Short vlan,
+            Integer ipv4Address, NodeConnector port) {
+<span class="nc" id="L76">        super(subIterator);</span>
+<span class="nc" id="L77">        this.entityClasses = entityClasses;</span>
+<span class="nc" id="L78">        this.subIterator = subIterator;</span>
+<span class="nc" id="L79">        this.macAddress = macAddress;</span>
+<span class="nc" id="L80">        this.vlan = vlan;</span>
+<span class="nc" id="L81">        this.ipv4Address = ipv4Address;</span>
+<span class="nc" id="L82">        this.port = port;</span>
+<span class="nc" id="L83">    }</span>
+
+    @Override
+    protected boolean matches(Device value) {
+        boolean match;
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (entityClasses != null) {</span>
+<span class="nc" id="L89">            IEntityClass clazz = value.getEntityClass();</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">            if (clazz == null)</span>
+<span class="nc" id="L91">                return false;</span>
+
+<span class="nc" id="L93">            match = false;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">            for (IEntityClass entityClass : entityClasses) {</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">                if (clazz.equals(entityClass)) {</span>
+<span class="nc" id="L96">                    match = true;</span>
+<span class="nc" id="L97">                    break;</span>
+                }
+            }
+<span class="nc bnc" id="L100" title="All 2 branches missed.">            if (!match)</span>
+<span class="nc" id="L101">                return false;</span>
+        }
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (macAddress != null) {</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">            if (macAddress.longValue() != value.getMACAddress())</span>
+<span class="nc" id="L105">                return false;</span>
+        }
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (vlan != null) {</span>
+<span class="nc" id="L108">            Short[] vlans = value.getVlanId();</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">            if (Arrays.binarySearch(vlans, vlan) &lt; 0)</span>
+<span class="nc" id="L110">                return false;</span>
+        }
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        if (ipv4Address != null) {</span>
+<span class="nc" id="L113">            Integer[] ipv4Addresses = value.getIPv4Addresses();</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            if (Arrays.binarySearch(ipv4Addresses, ipv4Address) &lt; 0)</span>
+<span class="nc" id="L115">                return false;</span>
+        }
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (port != null) {</span>
+<span class="nc" id="L118">            SwitchPort[] sps = value.getAttachmentPoints();</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">            if (sps == null)</span>
+<span class="nc" id="L120">                return false;</span>
+
+<span class="nc" id="L122">            match = false;</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">            for (SwitchPort sp : sps) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">                if (sp.getPort().equals(sp.getPort())) {</span>
+<span class="nc" id="L125">                    match = true;</span>
+<span class="nc" id="L126">                    break;</span>
+                }
+            }
+<span class="nc bnc" id="L129" title="All 2 branches missed.">            if (!match)</span>
+<span class="nc" id="L130">                return false;</span>
+        }
+<span class="nc" id="L132">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DeviceUniqueIndex.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker_new.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">DeviceUniqueIndex.java</span></div><h1>DeviceUniqueIndex.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2012 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ *
+ *      http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *    Originally created by David Erickson, Stanford University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ *    you may not use this file except in compliance with the
+ *    License. You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing,
+ *    software distributed under the License is distributed on an &quot;AS
+ *    IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ *    express or implied. See the License for the specific language
+ *    governing permissions and limitations under the License.
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.opendaylight.controller.hosttracker.Entity;
+import org.opendaylight.controller.hosttracker.IDeviceService;
+
+/**
+ * An index that maps key fields of an entity uniquely to a device key
+ */
+public class DeviceUniqueIndex extends DeviceIndex {
+    /**
+     * The index
+     */
+    private final ConcurrentHashMap&lt;IndexedEntity, Long&gt; index;
+
+    /**
+     * Construct a new device index using the provided key fields
+     *
+     * @param keyFields
+     *            the key fields to use
+     */
+    public DeviceUniqueIndex(EnumSet&lt;IDeviceService.DeviceField&gt; keyFields) {
+<span class="nc" id="L60">        super(keyFields);</span>
+<span class="nc" id="L61">        index = new ConcurrentHashMap&lt;IndexedEntity, Long&gt;();</span>
+<span class="nc" id="L62">    }</span>
+
+    // ***********
+    // DeviceIndex
+    // ***********
+
+    @Override
+    public Iterator&lt;Long&gt; queryByEntity(Entity entity) {
+<span class="nc" id="L70">        final Long deviceKey = findByEntity(entity);</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if (deviceKey != null)</span>
+<span class="nc" id="L72">            return Collections.&lt;Long&gt; singleton(deviceKey).iterator();</span>
+
+<span class="nc" id="L74">        return Collections.&lt;Long&gt; emptySet().iterator();</span>
+    }
+
+    @Override
+    public Iterator&lt;Long&gt; getAll() {
+<span class="nc" id="L79">        return index.values().iterator();</span>
+    }
+
+    @Override
+    public boolean updateIndex(Device device, Long deviceKey) {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        for (Entity e : device.entities) {</span>
+<span class="nc" id="L85">            IndexedEntity ie = new IndexedEntity(keyFields, e);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            if (!ie.hasNonNullKeys())</span>
+<span class="nc" id="L87">                continue;</span>
+
+<span class="nc" id="L89">            Long ret = index.putIfAbsent(ie, deviceKey);</span>
+<span class="nc bnc" id="L90" title="All 4 branches missed.">            if (ret != null &amp;&amp; !ret.equals(deviceKey)) {</span>
+                // If the return value is non-null, then fail the insert
+                // (this implies that a device using this entity has
+                // already been created in another thread).
+<span class="nc" id="L94">                return false;</span>
+            }
+        }
+<span class="nc" id="L97">        return true;</span>
+    }
+
+    @Override
+    public void updateIndex(Entity entity, Long deviceKey) {
+<span class="nc" id="L102">        IndexedEntity ie = new IndexedEntity(keyFields, entity);</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (!ie.hasNonNullKeys())</span>
+<span class="nc" id="L104">            return;</span>
+<span class="nc" id="L105">        index.put(ie, deviceKey);</span>
+<span class="nc" id="L106">    }</span>
+
+    @Override
+    public void removeEntity(Entity entity) {
+<span class="nc" id="L110">        IndexedEntity ie = new IndexedEntity(keyFields, entity);</span>
+<span class="nc" id="L111">        index.remove(ie);</span>
+<span class="nc" id="L112">    }</span>
+
+    @Override
+    public void removeEntity(Entity entity, Long deviceKey) {
+<span class="nc" id="L116">        IndexedEntity ie = new IndexedEntity(keyFields, entity);</span>
+<span class="nc" id="L117">        index.remove(ie, deviceKey);</span>
+<span class="nc" id="L118">    }</span>
+
+    // **************
+    // Public Methods
+    // **************
+
+    /**
+     * Look up a {@link Device} based on the provided {@link Entity}.
+     *
+     * @param entity
+     *            the entity to search for
+     * @return The key for the {@link Device} object if found
+     */
+    public Long findByEntity(Entity entity) {
+<span class="nc" id="L132">        IndexedEntity ie = new IndexedEntity(keyFields, entity);</span>
+<span class="nc" id="L133">        Long deviceKey = index.get(ie);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (deviceKey == null)</span>
+<span class="nc" id="L135">            return null;</span>
+<span class="nc" id="L136">        return deviceKey;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

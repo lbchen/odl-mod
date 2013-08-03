@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api-docs title="REST API">
+  <data>
+    <schema namespace="" namespaceId="ns0" file="ns0.xsd">
+      <types>
+        <type name="subnetConfigs" id="org.opendaylight.controller.subnets.northbound.SubnetConfigs" package="org.opendaylight.controller.subnets.northbound">
+          <groups>
+            <group>SubnetConfigs</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="subnetConfig">
+              <choice name="subnetConfig" namespace="" typeNamespace="" typeName="subnetConfig" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="subnetConfig" id="org.opendaylight.controller.switchmanager.SubnetConfig" package="org.opendaylight.controller.switchmanager">
+          <groups>
+            <group>SubnetConfig</group>
+          </groups>
+          <attributes>
+            <attribute name="name" jsonName="name" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+            <attribute name="subnet" jsonName="subnet" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+          </attributes>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="nodePorts">
+              <choice name="nodePorts" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+          </elements>
+        </type>
+      </types>
+      <elements>
+        <element name="subnetConfigs" type="org.opendaylight.controller.subnets.northbound.SubnetConfigs" typeName="subnetConfigs" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SubnetConfigs</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<subnetConfigs>
+  <subnetConfig name="..." subnet="...">
+    <nodePorts>...</nodePorts>
+    <nodePorts>...</nodePorts>
+    <!--...more "nodePorts" elements...-->
+  </subnetConfig>
+  <subnetConfig name="..." subnet="...">
+    <!--...-->
+  </subnetConfig>
+  <!--...more "subnetConfig" elements...-->
+</subnetConfigs>]]></examplexml>
+          <examplejson><![CDATA[{
+  "subnetConfig" : [ {
+    "name" : "...",
+    "subnet" : "...",
+    "nodePorts" : [ "...", ... ]
+  }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="subnetConfig" type="org.opendaylight.controller.switchmanager.SubnetConfig" typeName="subnetConfig" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SubnetConfig</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<subnetConfig name="..." subnet="...">
+  <nodePorts>...</nodePorts>
+  <nodePorts>...</nodePorts>
+  <!--...more "nodePorts" elements...-->
+</subnetConfig>]]></examplexml>
+          <examplejson><![CDATA[{
+  "name" : "...",
+  "subnet" : "...",
+  "nodePorts" : [ "...", ... ]
+}]]></examplejson>
+        </element>
+      </elements>
+      <groups>
+        <group>
+          <name>SubnetConfig</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SubnetConfigs</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+      </groups>
+    </schema>
+  </data>
+  <soap>
+    <wsdls>
+    </wsdls>
+  </soap>
+  <rest baseAddress="http://localhost:8080/full" wadl="application.wadl">
+    <resources>
+      <resource name="/{containerName}" subcontext="/controller/nb/v2/subnet">
+        <groups>
+          <group>SubnetsNorthboundJAXRS</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[List all the subnets in a given container]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[container in which we want to query the subnets]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="subnetConfigs" />
+            
+            <documentation><![CDATA[a List of SubnetConfig]]></documentation>
+          </outValue>
+          <statusCode code="404">
+            <![CDATA[The containerName passed was not found]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/{subnetName}" subcontext="/controller/nb/v2/subnet">
+        <groups>
+          <group>SubnetsNorthboundJAXRS</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[List the configuration of a subnet in a given container]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[container in which we want to query the subnet]]>
+          </parameter>
+          <parameter name="subnetName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[of the subnet being queried]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="subnetConfig" />
+            
+            <documentation><![CDATA[a SubnetConfig]]></documentation>
+          </outValue>
+          <statusCode code="404">
+            <![CDATA[The containerName passed was not found]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[Subnet does not exist]]>
+          </statusCode>
+        </operation>
+        <operation name="POST">
+          <documentation>
+            <![CDATA[Add/Update a subnet to a container]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="true"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[container in which we want to add/update the subnet]]>
+          </parameter>
+          <parameter name="subnetName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[that has to be added]]>
+          </parameter>
+          <parameter name="subnet" type="query" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[pair default gateway IP/mask that identify the subnet being added modified]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[(no documentation provided)]]></documentation>
+          </outValue>
+          <statusCode code="404">
+            <![CDATA[The containerName passed was not found]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[Invalid Data passed]]>
+          </statusCode>
+          <statusCode code="201">
+            <![CDATA[Subnet added/modified]]>
+          </statusCode>
+          <statusCode code="500">
+            <![CDATA[Addition of subnet failed]]>
+          </statusCode>
+        </operation>
+        <operation name="DELETE">
+          <documentation>
+            <![CDATA[Delete a subnet from a container]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="true"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[container in which we want to delete the subnet by name]]>
+          </parameter>
+          <parameter name="subnetName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[of the subnet to be remove.]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[(no documentation provided)]]></documentation>
+          </outValue>
+          <statusCode code="404">
+            <![CDATA[The containerName passed was not found]]>
+          </statusCode>
+          <statusCode code="500">
+            <![CDATA[Removal of subnet failed]]>
+          </statusCode>
+        </operation>
+      </resource>
+    </resources>
+    <groups>
+      <group>
+        <name>SubnetsNorthboundJAXRS</name>
+        <documentation><![CDATA[]]></documentation>
+      </group>
+    </groups>
+  </rest>
+  <packages>
+    <package id="org.opendaylight.controller.subnets.northbound">
+    </package>
+  </packages>
+</api-docs>

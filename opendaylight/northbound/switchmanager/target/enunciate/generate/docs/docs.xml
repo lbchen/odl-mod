@@ -1,0 +1,1161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api-docs title="Switch Manager REST API">
+  <data>
+    <schema namespace="" namespaceId="ns0" file="ns0.xsd">
+      <types>
+        <type name="actions" id="org.opendaylight.controller.sal.core.Actions" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Actions</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="actionsValue">
+              <choice name="actionsValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="advertisedBandwidth" id="org.opendaylight.controller.sal.core.AdvertisedBandwidth" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Bandwidth">
+          <groups>
+            <group>AdvertisedBandwidth</group>
+          </groups>
+        </type>
+        <type name="bandwidth" id="org.opendaylight.controller.sal.core.Bandwidth" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Bandwidth</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="bandwidthValue">
+              <choice name="bandwidthValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+          </elements>
+        </type>
+        <type name="buffers" id="org.opendaylight.controller.sal.core.Buffers" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Buffers</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="buffersValue">
+              <choice name="buffersValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="capabilities" id="org.opendaylight.controller.sal.core.Capabilities" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Capabilities</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="capabilitiesValue">
+              <choice name="capabilitiesValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="config" id="org.opendaylight.controller.sal.core.Config" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Config</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="configValue">
+              <choice name="configValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="short"/>
+            </element>
+          </elements>
+        </type>
+        <type name="latency" id="org.opendaylight.controller.sal.core.Latency" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Latency</group>
+          </groups>
+        </type>
+        <type name="macAddress" id="org.opendaylight.controller.sal.core.MacAddress" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>MacAddress</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="macAddress">
+              <choice name="macAddress" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="base64Binary"/>
+            </element>
+          </elements>
+        </type>
+        <type name="name" id="org.opendaylight.controller.sal.core.Name" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Name</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="nameValue">
+              <choice name="nameValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+          </elements>
+        </type>
+        <type name="node" id="org.opendaylight.controller.sal.core.Node" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>Node</group>
+          </groups>
+          <attributes>
+            <attribute name="id" jsonName="id" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+            <attribute name="type" jsonName="type" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+          </attributes>
+        </type>
+        <type name="nodeConnector" id="org.opendaylight.controller.sal.core.NodeConnector" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>NodeConnector</group>
+          </groups>
+          <attributes>
+            <attribute name="id" jsonName="id" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+            <attribute name="type" jsonName="type" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+          </attributes>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="node">
+              <choice name="node" namespace="" typeNamespace="" typeName="node" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="peerBandwidth" id="org.opendaylight.controller.sal.core.PeerBandwidth" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Bandwidth">
+          <groups>
+            <group>PeerBandwidth</group>
+          </groups>
+        </type>
+        <type name="property" id="org.opendaylight.controller.sal.core.Property" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>Property</group>
+          </groups>
+        </type>
+        <type name="state" id="org.opendaylight.controller.sal.core.State" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>State</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="stateValue">
+              <choice name="stateValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="short"/>
+            </element>
+          </elements>
+        </type>
+        <type name="supportedBandwidth" id="org.opendaylight.controller.sal.core.SupportedBandwidth" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Bandwidth">
+          <groups>
+            <group>SupportedBandwidth</group>
+          </groups>
+        </type>
+        <type name="tables" id="org.opendaylight.controller.sal.core.Tables" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Tables</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="tablesValue">
+              <choice name="tablesValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="byte"/>
+            </element>
+          </elements>
+        </type>
+        <type name="tier" id="org.opendaylight.controller.sal.core.Tier" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>Tier</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="tierValue">
+              <choice name="tierValue" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="timeStamp" id="org.opendaylight.controller.sal.core.TimeStamp" package="org.opendaylight.controller.sal.core" extendsType="org.opendaylight.controller.sal.core.Property">
+          <groups>
+            <group>TimeStamp</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="timestamp">
+              <choice name="timestamp" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="0" maxOccurs="1" jsonName="timestampName">
+              <choice name="timestampName" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+          </elements>
+        </type>
+        <type name="nodeConnectorProperties" id="org.opendaylight.controller.switchmanager.northbound.NodeConnectorProperties" package="org.opendaylight.controller.switchmanager.northbound">
+          <documentation>
+            <![CDATA[The class describes set of properties attached to a node connector]]>
+          </documentation>
+          <groups>
+            <group>NodeConnectorProperties</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="nodeconnector">
+              <choice name="nodeconnector" namespace="" typeNamespace="" typeName="nodeConnector" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="properties">
+              <choice name="properties/actions" namespace=""/>
+              <choice name="properties/advertisedBandwidth" namespace=""/>
+              <choice name="properties/bandwidth" namespace=""/>
+              <choice name="properties/buffers" namespace=""/>
+              <choice name="properties/capabilities" namespace=""/>
+              <choice name="properties/config" namespace=""/>
+              <choice name="properties/latency" namespace=""/>
+              <choice name="properties/macAddress" namespace=""/>
+              <choice name="properties/name" namespace=""/>
+              <choice name="properties/peerBandwidth" namespace=""/>
+              <choice name="properties/property" namespace=""/>
+              <choice name="properties/state" namespace=""/>
+              <choice name="properties/supportedBandwidth" namespace=""/>
+              <choice name="properties/tables" namespace=""/>
+              <choice name="properties/tier" namespace=""/>
+              <choice name="properties/timeStamp" namespace=""/>
+            </element>
+          </elements>
+        </type>
+        <type name="nodeConnectors" id="org.opendaylight.controller.switchmanager.northbound.NodeConnectors" package="org.opendaylight.controller.switchmanager.northbound">
+          <groups>
+            <group>NodeConnectors</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="nodeConnectorProperties">
+              <choice name="nodeConnectorProperties" namespace="" typeNamespace="" typeName="nodeConnectorProperties" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="nodeProperties" id="org.opendaylight.controller.switchmanager.northbound.NodeProperties" package="org.opendaylight.controller.switchmanager.northbound">
+          <documentation>
+            <![CDATA[The class describes set of properties attached to a node]]>
+          </documentation>
+          <groups>
+            <group>NodeProperties</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="node">
+              <choice name="node" namespace="" typeNamespace="" typeName="node" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="properties">
+              <choice name="properties/actions" namespace=""/>
+              <choice name="properties/advertisedBandwidth" namespace=""/>
+              <choice name="properties/bandwidth" namespace=""/>
+              <choice name="properties/buffers" namespace=""/>
+              <choice name="properties/capabilities" namespace=""/>
+              <choice name="properties/config" namespace=""/>
+              <choice name="properties/latency" namespace=""/>
+              <choice name="properties/macAddress" namespace=""/>
+              <choice name="properties/name" namespace=""/>
+              <choice name="properties/peerBandwidth" namespace=""/>
+              <choice name="properties/property" namespace=""/>
+              <choice name="properties/state" namespace=""/>
+              <choice name="properties/supportedBandwidth" namespace=""/>
+              <choice name="properties/tables" namespace=""/>
+              <choice name="properties/tier" namespace=""/>
+              <choice name="properties/timeStamp" namespace=""/>
+            </element>
+          </elements>
+        </type>
+        <type name="nodes" id="org.opendaylight.controller.switchmanager.northbound.Nodes" package="org.opendaylight.controller.switchmanager.northbound">
+          <groups>
+            <group>Nodes</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="nodeProperties">
+              <choice name="nodeProperties" namespace="" typeNamespace="" typeName="nodeProperties" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+      </types>
+      <elements>
+        <element name="actions" type="org.opendaylight.controller.sal.core.Actions" typeName="actions" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Actions</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+  <actionsValue>...</actionsValue>
+</actions>]]></examplexml>
+          <examplejson><![CDATA[{
+  "actionsValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="advertisedBandwidth" type="org.opendaylight.controller.sal.core.AdvertisedBandwidth" typeName="advertisedBandwidth" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>AdvertisedBandwidth</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<advertisedBandwidth>
+  <bandwidthValue>...</bandwidthValue>
+</advertisedBandwidth>]]></examplexml>
+          <examplejson><![CDATA[{
+  "bandwidthValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="bandwidth" type="org.opendaylight.controller.sal.core.Bandwidth" typeName="bandwidth" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Bandwidth</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<bandwidth>
+  <bandwidthValue>...</bandwidthValue>
+</bandwidth>]]></examplexml>
+          <examplejson><![CDATA[{
+  "bandwidthValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="buffers" type="org.opendaylight.controller.sal.core.Buffers" typeName="buffers" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Buffers</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<buffers>
+  <buffersValue>...</buffersValue>
+</buffers>]]></examplexml>
+          <examplejson><![CDATA[{
+  "buffersValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="capabilities" type="org.opendaylight.controller.sal.core.Capabilities" typeName="capabilities" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Capabilities</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<capabilities>
+  <capabilitiesValue>...</capabilitiesValue>
+</capabilities>]]></examplexml>
+          <examplejson><![CDATA[{
+  "capabilitiesValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="config" type="org.opendaylight.controller.sal.core.Config" typeName="config" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Config</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <configValue>...</configValue>
+</config>]]></examplexml>
+          <examplejson><![CDATA[{
+  "configValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="latency" type="org.opendaylight.controller.sal.core.Latency" typeName="latency" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Latency</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<latency />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="macAddress" type="org.opendaylight.controller.sal.core.MacAddress" typeName="macAddress" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>MacAddress</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<macAddress>
+  <macAddress>...</macAddress>
+</macAddress>]]></examplexml>
+          <examplejson><![CDATA[{
+  "macAddress" : "..."
+}]]></examplejson>
+        </element>
+        <element name="name" type="org.opendaylight.controller.sal.core.Name" typeName="name" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Name</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<name>
+  <nameValue>...</nameValue>
+</name>]]></examplexml>
+          <examplejson><![CDATA[{
+  "nameValue" : "..."
+}]]></examplejson>
+        </element>
+        <element name="node" type="org.opendaylight.controller.sal.core.Node" typeName="node" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Node</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<node id="..." type="..." />]]></examplexml>
+          <examplejson><![CDATA[{
+  "id" : "...",
+  "type" : "..."
+}]]></examplejson>
+        </element>
+        <element name="nodeConnector" type="org.opendaylight.controller.sal.core.NodeConnector" typeName="nodeConnector" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>NodeConnector</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeConnector id="..." type="...">
+  <node id="..." type="..." />
+</nodeConnector>]]></examplexml>
+          <examplejson><![CDATA[{
+  "id" : "...",
+  "type" : "...",
+  "node" : {
+    "id" : "...",
+    "type" : "..."
+  }
+}]]></examplejson>
+        </element>
+        <element name="peerBandwidth" type="org.opendaylight.controller.sal.core.PeerBandwidth" typeName="peerBandwidth" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>PeerBandwidth</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<peerBandwidth>
+  <bandwidthValue>...</bandwidthValue>
+</peerBandwidth>]]></examplexml>
+          <examplejson><![CDATA[{
+  "bandwidthValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="property" type="org.opendaylight.controller.sal.core.Property" typeName="property" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Property</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<property />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="state" type="org.opendaylight.controller.sal.core.State" typeName="state" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>State</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<state>
+  <stateValue>...</stateValue>
+</state>]]></examplexml>
+          <examplejson><![CDATA[{
+  "stateValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="supportedBandwidth" type="org.opendaylight.controller.sal.core.SupportedBandwidth" typeName="supportedBandwidth" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SupportedBandwidth</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<supportedBandwidth>
+  <bandwidthValue>...</bandwidthValue>
+</supportedBandwidth>]]></examplexml>
+          <examplejson><![CDATA[{
+  "bandwidthValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="tables" type="org.opendaylight.controller.sal.core.Tables" typeName="tables" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Tables</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<tables>
+  <tablesValue>...</tablesValue>
+</tables>]]></examplexml>
+          <examplejson><![CDATA[{
+  "tablesValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="tier" type="org.opendaylight.controller.sal.core.Tier" typeName="tier" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Tier</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<tier>
+  <tierValue>...</tierValue>
+</tier>]]></examplexml>
+          <examplejson><![CDATA[{
+  "tierValue" : ...
+}]]></examplejson>
+        </element>
+        <element name="timeStamp" type="org.opendaylight.controller.sal.core.TimeStamp" typeName="timeStamp" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>TimeStamp</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<timeStamp>
+  <timestamp>...</timestamp>
+  <timestampName>...</timestampName>
+</timeStamp>]]></examplexml>
+          <examplejson><![CDATA[{
+  "timestamp" : ...,
+  "timestampName" : "..."
+}]]></examplejson>
+        </element>
+        <element name="nodeConnectorProperties" type="org.opendaylight.controller.switchmanager.northbound.NodeConnectorProperties" typeName="nodeConnectorProperties" typeNamespace="" typeSchemaId="ns0">
+          <documentation>
+            <![CDATA[The class describes set of properties attached to a node connector]]>
+          </documentation>
+          <groups>
+            <group>NodeConnectorProperties</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeConnectorProperties>
+  <nodeconnector id="..." type="...">
+    <node id="..." type="..." />
+  </nodeconnector>
+  <properties>
+    <actions>...</actions>
+    <actions>...</actions>
+    <!--...more "actions" elements...-->
+    <advertisedBandwidth>...</advertisedBandwidth>
+    <advertisedBandwidth>...</advertisedBandwidth>
+    <!--...more "advertisedBandwidth" elements...-->
+    <bandwidth>...</bandwidth>
+    <bandwidth>...</bandwidth>
+    <!--...more "bandwidth" elements...-->
+    <buffers>...</buffers>
+    <buffers>...</buffers>
+    <!--...more "buffers" elements...-->
+    <capabilities>...</capabilities>
+    <capabilities>...</capabilities>
+    <!--...more "capabilities" elements...-->
+    <config>...</config>
+    <config>...</config>
+    <!--...more "config" elements...-->
+    <latency>...</latency>
+    <latency>...</latency>
+    <!--...more "latency" elements...-->
+    <macAddress>...</macAddress>
+    <macAddress>...</macAddress>
+    <!--...more "macAddress" elements...-->
+    <name>...</name>
+    <name>...</name>
+    <!--...more "name" elements...-->
+    <peerBandwidth>...</peerBandwidth>
+    <peerBandwidth>...</peerBandwidth>
+    <!--...more "peerBandwidth" elements...-->
+    <property>...</property>
+    <property>...</property>
+    <!--...more "property" elements...-->
+    <state>...</state>
+    <state>...</state>
+    <!--...more "state" elements...-->
+    <supportedBandwidth>...</supportedBandwidth>
+    <supportedBandwidth>...</supportedBandwidth>
+    <!--...more "supportedBandwidth" elements...-->
+    <tables>...</tables>
+    <tables>...</tables>
+    <!--...more "tables" elements...-->
+    <tier>...</tier>
+    <tier>...</tier>
+    <!--...more "tier" elements...-->
+    <timeStamp>...</timeStamp>
+    <timeStamp>...</timeStamp>
+    <!--...more "timeStamp" elements...-->
+  </properties>
+</nodeConnectorProperties>]]></examplexml>
+          <examplejson><![CDATA[{
+  "nodeconnector" : {
+    "id" : "...",
+    "type" : "...",
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    }
+  },
+  "properties" : [ { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { } ]
+}]]></examplejson>
+        </element>
+        <element name="nodeConnectors" type="org.opendaylight.controller.switchmanager.northbound.NodeConnectors" typeName="nodeConnectors" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>NodeConnectors</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeConnectors>
+  <nodeConnectorProperties>
+    <nodeconnector id="..." type="...">
+      <node id="..." type="..." />
+    </nodeconnector>
+    <properties>
+      <actions>...</actions>
+      <actions>...</actions>
+      <!--...more "actions" elements...-->
+      <advertisedBandwidth>...</advertisedBandwidth>
+      <advertisedBandwidth>...</advertisedBandwidth>
+      <!--...more "advertisedBandwidth" elements...-->
+      <bandwidth>...</bandwidth>
+      <bandwidth>...</bandwidth>
+      <!--...more "bandwidth" elements...-->
+      <buffers>...</buffers>
+      <buffers>...</buffers>
+      <!--...more "buffers" elements...-->
+      <capabilities>...</capabilities>
+      <capabilities>...</capabilities>
+      <!--...more "capabilities" elements...-->
+      <config>...</config>
+      <config>...</config>
+      <!--...more "config" elements...-->
+      <latency>...</latency>
+      <latency>...</latency>
+      <!--...more "latency" elements...-->
+      <macAddress>...</macAddress>
+      <macAddress>...</macAddress>
+      <!--...more "macAddress" elements...-->
+      <name>...</name>
+      <name>...</name>
+      <!--...more "name" elements...-->
+      <peerBandwidth>...</peerBandwidth>
+      <peerBandwidth>...</peerBandwidth>
+      <!--...more "peerBandwidth" elements...-->
+      <property>...</property>
+      <property>...</property>
+      <!--...more "property" elements...-->
+      <state>...</state>
+      <state>...</state>
+      <!--...more "state" elements...-->
+      <supportedBandwidth>...</supportedBandwidth>
+      <supportedBandwidth>...</supportedBandwidth>
+      <!--...more "supportedBandwidth" elements...-->
+      <tables>...</tables>
+      <tables>...</tables>
+      <!--...more "tables" elements...-->
+      <tier>...</tier>
+      <tier>...</tier>
+      <!--...more "tier" elements...-->
+      <timeStamp>...</timeStamp>
+      <timeStamp>...</timeStamp>
+      <!--...more "timeStamp" elements...-->
+    </properties>
+  </nodeConnectorProperties>
+  <nodeConnectorProperties>
+    <!--...-->
+  </nodeConnectorProperties>
+  <!--...more "nodeConnectorProperties" elements...-->
+</nodeConnectors>]]></examplexml>
+          <examplejson><![CDATA[{
+  "nodeConnectorProperties" : [ {
+    "nodeconnector" : {
+      "id" : "...",
+      "type" : "...",
+      "node" : {
+        "id" : "...",
+        "type" : "..."
+      }
+    },
+    "properties" : [ { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { } ]
+  }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="nodeProperties" type="org.opendaylight.controller.switchmanager.northbound.NodeProperties" typeName="nodeProperties" typeNamespace="" typeSchemaId="ns0">
+          <documentation>
+            <![CDATA[The class describes set of properties attached to a node]]>
+          </documentation>
+          <groups>
+            <group>NodeProperties</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeProperties>
+  <node id="..." type="..." />
+  <properties>
+    <actions>...</actions>
+    <actions>...</actions>
+    <!--...more "actions" elements...-->
+    <advertisedBandwidth>...</advertisedBandwidth>
+    <advertisedBandwidth>...</advertisedBandwidth>
+    <!--...more "advertisedBandwidth" elements...-->
+    <bandwidth>...</bandwidth>
+    <bandwidth>...</bandwidth>
+    <!--...more "bandwidth" elements...-->
+    <buffers>...</buffers>
+    <buffers>...</buffers>
+    <!--...more "buffers" elements...-->
+    <capabilities>...</capabilities>
+    <capabilities>...</capabilities>
+    <!--...more "capabilities" elements...-->
+    <config>...</config>
+    <config>...</config>
+    <!--...more "config" elements...-->
+    <latency>...</latency>
+    <latency>...</latency>
+    <!--...more "latency" elements...-->
+    <macAddress>...</macAddress>
+    <macAddress>...</macAddress>
+    <!--...more "macAddress" elements...-->
+    <name>...</name>
+    <name>...</name>
+    <!--...more "name" elements...-->
+    <peerBandwidth>...</peerBandwidth>
+    <peerBandwidth>...</peerBandwidth>
+    <!--...more "peerBandwidth" elements...-->
+    <property>...</property>
+    <property>...</property>
+    <!--...more "property" elements...-->
+    <state>...</state>
+    <state>...</state>
+    <!--...more "state" elements...-->
+    <supportedBandwidth>...</supportedBandwidth>
+    <supportedBandwidth>...</supportedBandwidth>
+    <!--...more "supportedBandwidth" elements...-->
+    <tables>...</tables>
+    <tables>...</tables>
+    <!--...more "tables" elements...-->
+    <tier>...</tier>
+    <tier>...</tier>
+    <!--...more "tier" elements...-->
+    <timeStamp>...</timeStamp>
+    <timeStamp>...</timeStamp>
+    <!--...more "timeStamp" elements...-->
+  </properties>
+</nodeProperties>]]></examplexml>
+          <examplejson><![CDATA[{
+  "node" : {
+    "id" : "...",
+    "type" : "..."
+  },
+  "properties" : [ { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { } ]
+}]]></examplejson>
+        </element>
+        <element name="nodes" type="org.opendaylight.controller.switchmanager.northbound.Nodes" typeName="nodes" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Nodes</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodes>
+  <nodeProperties>
+    <node id="..." type="..." />
+    <properties>
+      <actions>...</actions>
+      <actions>...</actions>
+      <!--...more "actions" elements...-->
+      <advertisedBandwidth>...</advertisedBandwidth>
+      <advertisedBandwidth>...</advertisedBandwidth>
+      <!--...more "advertisedBandwidth" elements...-->
+      <bandwidth>...</bandwidth>
+      <bandwidth>...</bandwidth>
+      <!--...more "bandwidth" elements...-->
+      <buffers>...</buffers>
+      <buffers>...</buffers>
+      <!--...more "buffers" elements...-->
+      <capabilities>...</capabilities>
+      <capabilities>...</capabilities>
+      <!--...more "capabilities" elements...-->
+      <config>...</config>
+      <config>...</config>
+      <!--...more "config" elements...-->
+      <latency>...</latency>
+      <latency>...</latency>
+      <!--...more "latency" elements...-->
+      <macAddress>...</macAddress>
+      <macAddress>...</macAddress>
+      <!--...more "macAddress" elements...-->
+      <name>...</name>
+      <name>...</name>
+      <!--...more "name" elements...-->
+      <peerBandwidth>...</peerBandwidth>
+      <peerBandwidth>...</peerBandwidth>
+      <!--...more "peerBandwidth" elements...-->
+      <property>...</property>
+      <property>...</property>
+      <!--...more "property" elements...-->
+      <state>...</state>
+      <state>...</state>
+      <!--...more "state" elements...-->
+      <supportedBandwidth>...</supportedBandwidth>
+      <supportedBandwidth>...</supportedBandwidth>
+      <!--...more "supportedBandwidth" elements...-->
+      <tables>...</tables>
+      <tables>...</tables>
+      <!--...more "tables" elements...-->
+      <tier>...</tier>
+      <tier>...</tier>
+      <!--...more "tier" elements...-->
+      <timeStamp>...</timeStamp>
+      <timeStamp>...</timeStamp>
+      <!--...more "timeStamp" elements...-->
+    </properties>
+  </nodeProperties>
+  <nodeProperties>
+    <!--...-->
+  </nodeProperties>
+  <!--...more "nodeProperties" elements...-->
+</nodes>]]></examplexml>
+          <examplejson><![CDATA[{
+  "nodeProperties" : [ {
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    },
+    "properties" : [ { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { }, { } ]
+  }, ... ]
+}]]></examplejson>
+        </element>
+      </elements>
+      <groups>
+        <group>
+          <name>Actions</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>AdvertisedBandwidth</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Bandwidth</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Buffers</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Capabilities</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Config</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Latency</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>MacAddress</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Name</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Node</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>NodeConnector</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>NodeConnectorProperties</name>
+          <documentation><![CDATA[The class describes set of properties attached to a node connector]]></documentation>
+        </group>
+        <group>
+          <name>NodeConnectors</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>NodeProperties</name>
+          <documentation><![CDATA[The class describes set of properties attached to a node]]></documentation>
+        </group>
+        <group>
+          <name>Nodes</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>PeerBandwidth</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Property</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>State</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SupportedBandwidth</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Tables</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Tier</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>TimeStamp</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+      </groups>
+    </schema>
+  </data>
+  <soap>
+    <wsdls>
+    </wsdls>
+  </soap>
+  <rest baseAddress="http://localhost:8080/full" wadl="application.wadl">
+    <resources>
+      <resource name="/{containerName}/nodes" subcontext="/controller/nb/v2/switch">
+        <groups>
+          <group>SwitchNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Retrieve a list of all the nodes and their properties in the network]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[The container for which we want to retrieve the list]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="nodes" />
+            
+            <documentation><![CDATA[A list of Pair each pair represents a
+org.opendaylight.controller.sal.core.Node and Set of
+org.opendaylight.controller.sal.core.Property attached to
+it.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/switch-config" subcontext="/controller/nb/v2/switch">
+        <groups>
+          <group>SwitchNorthbound</group>
+        </groups>
+        <operation name="POST">
+          <documentation>
+            <![CDATA[Save the current switch configurations]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[Response as dictated by the HTTP Response Status code]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/node/{nodeType}/{nodeId}" subcontext="/controller/nb/v2/switch">
+        <groups>
+          <group>SwitchNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Retrieve a list of all the node connectors and their properties in a
+given node]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[The container for which we want to retrieve the list]]>
+          </parameter>
+          <parameter name="nodeType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Type of the node being programmed]]>
+          </parameter>
+          <parameter name="nodeId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="nodeConnectors" />
+            
+            <documentation><![CDATA[A List of Pair each pair represents a
+org.opendaylight.controller.sal.core.NodeConnector and
+its corresponding
+org.opendaylight.controller.sal.core.Property attached to
+it.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/node/{nodeType}/{nodeId}/property/{propertyName}" subcontext="/controller/nb/v2/switch">
+        <groups>
+          <group>SwitchNorthbound</group>
+        </groups>
+        <operation name="DELETE">
+          <documentation>
+            <![CDATA[Delete a property of a node]]>
+          </documentation>
+          <contentType type="*/*" consumable="false" produceable="true"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="true" produceable="false"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container]]>
+          </parameter>
+          <parameter name="nodeType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Type of the node being programmed]]>
+          </parameter>
+          <parameter name="nodeId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+          </parameter>
+          <parameter name="propertyName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[Response as dictated by the HTTP Response Status code]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The Container Name or nodeId or configuration name is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/node/{nodeType}/{nodeId}/property/{propName}/{propValue}" subcontext="/controller/nb/v2/switch">
+        <groups>
+          <group>SwitchNorthbound</group>
+        </groups>
+        <operation name="PUT">
+          <documentation>
+            <![CDATA[Add a Name/Tier property to a node]]>
+          </documentation>
+          <contentType type="*/*" consumable="false" produceable="true"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="true" produceable="false"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container]]>
+          </parameter>
+          <parameter name="nodeType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Type of the node being programmed]]>
+          </parameter>
+          <parameter name="nodeId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+          </parameter>
+          <parameter name="propName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+          </parameter>
+          <parameter name="propValue" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Value of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[Response as dictated by the HTTP Response Status code]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The Container Name or nodeId or configuration name is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/nodeconnector/{nodeType}/{nodeId}/{nodeConnectorType}/{nodeConnectorId}/property/{propertyName}" subcontext="/controller/nb/v2/switch">
+        <groups>
+          <group>SwitchNorthbound</group>
+        </groups>
+        <operation name="DELETE">
+          <documentation>
+            <![CDATA[Delete a property of a node connector]]>
+          </documentation>
+          <contentType type="*/*" consumable="false" produceable="true"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="true" produceable="false"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container]]>
+          </parameter>
+          <parameter name="nodeType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Type of the node being programmed]]>
+          </parameter>
+          <parameter name="nodeId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+          </parameter>
+          <parameter name="nodeConnectorType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Type of the node connector being programmed]]>
+          </parameter>
+          <parameter name="nodeConnectorId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[NodeConnector Identifier as specified by org.opendaylight.controller.sal.core.NodeConnector]]>
+          </parameter>
+          <parameter name="propertyName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[Response as dictated by the HTTP Response Status code]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The Container Name or nodeId or configuration name is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/nodeconnector/{nodeType}/{nodeId}/{nodeConnectorType}/{nodeConnectorId}/property/{propName}/{propValue}" subcontext="/controller/nb/v2/switch">
+        <groups>
+          <group>SwitchNorthbound</group>
+        </groups>
+        <operation name="PUT">
+          <documentation>
+            <![CDATA[Add a Name/Bandwidth property to a node connector]]>
+          </documentation>
+          <contentType type="*/*" consumable="false" produceable="true"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="true" produceable="false"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container]]>
+          </parameter>
+          <parameter name="nodeType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Type of the node being programmed]]>
+          </parameter>
+          <parameter name="nodeId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+          </parameter>
+          <parameter name="nodeConnectorType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Type of the node connector being programmed]]>
+          </parameter>
+          <parameter name="nodeConnectorId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[NodeConnector Identifier as specified by org.opendaylight.controller.sal.core.NodeConnector]]>
+          </parameter>
+          <parameter name="propName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+          </parameter>
+          <parameter name="propValue" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Value of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[Response as dictated by the HTTP Response Status code]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The Container Name or nodeId or configuration name is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+    </resources>
+    <groups>
+      <group>
+        <name>SwitchNorthbound</name>
+        <documentation><![CDATA[The class provides Northbound REST APIs to access the nodes, node connectors
+and their properties.]]></documentation>
+      </group>
+    </groups>
+  </rest>
+  <packages>
+    <package id="org.opendaylight.controller.switchmanager.northbound">
+    </package>
+  </packages>
+</api-docs>

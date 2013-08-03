@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ClusterManagerCommon.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">clustering.services-implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.clustering.services_implementation.internal</a> &gt; <span class="el_source">ClusterManagerCommon.java</span></div><h1>ClusterManagerCommon.java</h1><pre class="source lang-java linenums">
+/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.clustering.services_implementation.internal;
+
+import java.net.InetAddress;
+import java.util.Collections;
+import java.util.Dictionary;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import javax.transaction.HeuristicMixedException;
+import javax.transaction.HeuristicRollbackException;
+import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
+import javax.transaction.SystemException;
+import javax.transaction.Transaction;
+import javax.transaction.TransactionManager;
+import org.apache.felix.dm.Component;
+import org.opendaylight.controller.clustering.services.CacheConfigException;
+import org.opendaylight.controller.clustering.services.CacheExistException;
+import org.opendaylight.controller.clustering.services.CacheListenerAddException;
+import org.opendaylight.controller.clustering.services.ICacheUpdateAware;
+import org.opendaylight.controller.clustering.services.IClusterServices;
+import org.opendaylight.controller.clustering.services.IClusterServicesCommon;
+import org.opendaylight.controller.clustering.services.ICoordinatorChangeAware;
+import org.opendaylight.controller.clustering.services.IListenRoleChange;
+import org.opendaylight.controller.clustering.services.ListenRoleChangeAddException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+<span class="nc" id="L42">abstract public class ClusterManagerCommon implements IClusterServicesCommon {</span>
+<span class="nc" id="L43">    protected String containerName = null;</span>
+<span class="nc" id="L44">    private IClusterServices clusterService = null;</span>
+<span class="nc" id="L45">    protected static final Logger logger = LoggerFactory</span>
+<span class="nc" id="L46">            .getLogger(ClusterManagerCommon.class);</span>
+<span class="nc" id="L47">    private ConcurrentMap&lt;String, GetUpdatesContainer&gt; cacheUpdateAware =</span>
+<span class="nc" id="L48">        new ConcurrentHashMap&lt;String, GetUpdatesContainer&gt;();</span>
+<span class="nc" id="L49">    private Set&lt;ICoordinatorChangeAware&gt; coordinatorChangeAware = Collections</span>
+<span class="nc" id="L50">            .synchronizedSet(new HashSet&lt;ICoordinatorChangeAware&gt;());</span>
+<span class="nc" id="L51">    private ListenCoordinatorChange coordinatorChangeListener = null;</span>
+
+    /**
+     * Class needed to listen to the role changes from the cluster
+     * manager and to pass it along to the other components that
+     * export the interface ICoordinatorChangeAware
+     */
+<span class="nc" id="L58">    class ListenCoordinatorChange implements IListenRoleChange {</span>
+        public void newActiveAvailable() {
+<span class="nc bnc" id="L60" title="All 2 branches missed.">            if (coordinatorChangeAware != null) {</span>
+                // Make sure to look the set while walking it
+<span class="nc" id="L62">                synchronized (coordinatorChangeAware) {</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">                    for (ICoordinatorChangeAware s : coordinatorChangeAware) {</span>
+                        // Now walk every instance and signal that the
+                        // coordinator has changed
+<span class="nc" id="L66">                        s.coordinatorChanged();</span>
+                    }
+                }
+            }
+<span class="nc" id="L70">        }</span>
+    }
+
+    void setCoordinatorChangeAware(ICoordinatorChangeAware s) {
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        if (this.coordinatorChangeAware != null) {</span>
+<span class="nc" id="L75">            this.coordinatorChangeAware.add(s);</span>
+        }
+<span class="nc" id="L77">    }</span>
+
+    void unsetCoordinatorChangeAware(ICoordinatorChangeAware s) {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (this.coordinatorChangeAware != null) {</span>
+<span class="nc" id="L81">            this.coordinatorChangeAware.remove(s);</span>
+        }
+<span class="nc" id="L83">    }</span>
+
+    void setCacheUpdateAware(Map props, ICacheUpdateAware s) {
+<span class="nc" id="L86">        logger.trace(&quot;CacheUpdateAware being set on container:{}&quot;,</span>
+<span class="nc" id="L87">                     this.containerName);</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (this.cacheUpdateAware != null) {</span>
+<span class="nc" id="L89">            Set&lt;String&gt; caches = (Set&lt;String&gt;)props.get(&quot;cachenames&quot;);</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">            if (caches != null) {</span>
+<span class="nc" id="L91">                logger.trace(&quot;cachenames provided below:&quot;);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">                for (String cache : caches) {</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">                    if (this.cacheUpdateAware.get(cache) != null) {</span>
+<span class="nc" id="L94">                        logger.error(&quot;cachename:{} on container:{} has &quot; +</span>
+<span class="nc" id="L95">                                     &quot;already a listener&quot;, cache,</span>
+<span class="nc" id="L96">                                     this.containerName);</span>
+<span class="nc" id="L97">                    } else {</span>
+<span class="nc" id="L98">                        GetUpdatesContainer&lt;?, ?&gt; up =</span>
+<span class="nc" id="L99">                            new GetUpdatesContainer(s, this.containerName,</span>
+<span class="nc" id="L100">                                                    cache);</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">                        if (up != null) {</span>
+                            try {
+<span class="nc" id="L103">                                this.clusterService.addListener(this.containerName,</span>
+<span class="nc" id="L104">                                                                cache, up);</span>
+<span class="nc" id="L105">                                this.cacheUpdateAware.put(cache, up);</span>
+<span class="nc" id="L106">                                logger.trace(&quot;cachename:{} on container:{} has &quot; +</span>
+<span class="nc" id="L107">                                             &quot;been registered&quot;, cache,</span>
+<span class="nc" id="L108">                                             this.containerName);</span>
+<span class="nc" id="L109">                            } catch (CacheListenerAddException exc) {</span>
+                                // Do nothing, the important is that
+                                // we don't register the listener in
+                                // the shadow, and we are not doing
+                                // that.
+                            }
+                        }
+                    }
+                }
+            }
+        }
+<span class="nc" id="L120">    }</span>
+
+    void unsetCacheUpdateAware(Map props, ICacheUpdateAware s) {
+<span class="nc" id="L123">        logger.trace(&quot;CacheUpdateAware being unset on container:{}&quot;,</span>
+<span class="nc" id="L124">                     this.containerName);</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (this.cacheUpdateAware != null) {</span>
+<span class="nc" id="L126">            Set&lt;String&gt; caches = (Set&lt;String&gt;)props.get(&quot;cachenames&quot;);</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">            if (caches != null) {</span>
+<span class="nc" id="L128">                logger.trace(&quot;cachenames provided below:&quot;);</span>
+<span class="nc" id="L129">                GetUpdatesContainer&lt;?, ?&gt; up = null;</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">                for (String cache : caches) {</span>
+<span class="nc" id="L131">                    up = this.cacheUpdateAware.get(cache);</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">                    if (up != null) {</span>
+<span class="nc" id="L133">                        this.cacheUpdateAware.remove(cache);</span>
+<span class="nc" id="L134">                        this.clusterService.removeListener(this.containerName,</span>
+<span class="nc" id="L135">                                                           cache, up);</span>
+                    }
+                }
+            }
+        }
+<span class="nc" id="L140">    }</span>
+
+    public void setClusterService(IClusterServices s) {
+<span class="nc" id="L143">        this.clusterService = s;</span>
+<span class="nc" id="L144">    }</span>
+
+    public void unsetClusterServices(IClusterServices s) {
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (this.clusterService == s) {</span>
+<span class="nc" id="L148">            this.clusterService = null;</span>
+        }
+<span class="nc" id="L150">    }</span>
+
+    /**
+     * Function called by the dependency manager when all the required
+     * dependencies are satisfied
+     *
+     */
+    void init(Component c) {
+<span class="nc" id="L158">        Dictionary props = c.getServiceProperties();</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        if (props != null) {</span>
+<span class="nc" id="L160">            this.containerName = (String) props.get(&quot;containerName&quot;);</span>
+<span class="nc" id="L161">            logger.debug(&quot;Running containerName: {}&quot;, this.containerName);</span>
+<span class="nc" id="L162">        } else {</span>
+            // In the Global instance case the containerName is empty
+<span class="nc" id="L164">            this.containerName = &quot;&quot;;</span>
+        }
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L167">            this.coordinatorChangeListener = new ListenCoordinatorChange();</span>
+            try {
+<span class="nc" id="L169">                this.clusterService</span>
+<span class="nc" id="L170">                        .listenRoleChange(this.coordinatorChangeListener);</span>
+<span class="nc" id="L171">                logger.debug(&quot;Coordinator change handler registered&quot;);</span>
+<span class="nc" id="L172">            } catch (ListenRoleChangeAddException ex) {</span>
+<span class="nc" id="L173">                logger.error(&quot;Could not register coordinator change&quot;);</span>
+            }
+        }
+<span class="nc" id="L176">    }</span>
+
+    /**
+     * Function called by the dependency manager when any of the required
+     * dependencies are going away
+     *
+     */
+    void destroy() {
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        if (this.clusterService != null</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">                &amp;&amp; this.coordinatorChangeListener != null) {</span>
+<span class="nc" id="L186">            this.clusterService</span>
+<span class="nc" id="L187">                    .unlistenRoleChange(this.coordinatorChangeListener);</span>
+<span class="nc" id="L188">            this.coordinatorChangeListener = null;</span>
+<span class="nc" id="L189">            logger.debug(&quot;Coordinator change handler UNregistered&quot;);</span>
+        }
+<span class="nc" id="L191">    }</span>
+
+    @Override
+    public ConcurrentMap&lt;?, ?&gt; createCache(String cacheName,
+            Set&lt;IClusterServices.cacheMode&gt; cMode) throws CacheExistException,
+            CacheConfigException {
+<span class="nc bnc" id="L197" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L198">            return this.clusterService.createCache(this.containerName,</span>
+<span class="nc" id="L199">                    cacheName, cMode);</span>
+        } else {
+<span class="nc" id="L201">            return null;</span>
+        }
+    }
+
+    @Override
+    public ConcurrentMap&lt;?, ?&gt; getCache(String cacheName) {
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L208">            return this.clusterService.getCache(this.containerName, cacheName);</span>
+        } else {
+<span class="nc" id="L210">            return null;</span>
+        }
+    }
+
+    @Override
+    public void destroyCache(String cacheName) {
+<span class="nc bnc" id="L216" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L217">            this.clusterService.destroyCache(this.containerName, cacheName);</span>
+        }
+<span class="nc" id="L219">    }</span>
+
+    @Override
+    public boolean existCache(String cacheName) {
+<span class="nc bnc" id="L223" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L224">            return this.clusterService</span>
+<span class="nc" id="L225">                    .existCache(this.containerName, cacheName);</span>
+        } else {
+<span class="nc" id="L227">            return false;</span>
+        }
+    }
+
+    @Override
+    public Set&lt;String&gt; getCacheList() {
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L234">            return this.clusterService.getCacheList(this.containerName);</span>
+        } else {
+<span class="nc" id="L236">            return null;</span>
+        }
+    }
+
+    @Override
+    public Properties getCacheProperties(String cacheName) {
+<span class="nc bnc" id="L242" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L243">            return this.clusterService.getCacheProperties(this.containerName,</span>
+<span class="nc" id="L244">                    cacheName);</span>
+        } else {
+<span class="nc" id="L246">            return null;</span>
+        }
+    }
+
+    @Override
+    public void tbegin() throws NotSupportedException, SystemException {
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L253">            this.clusterService.tbegin();</span>
+<span class="nc" id="L254">        } else {</span>
+<span class="nc" id="L255">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L257">    }</span>
+
+    @Override
+    public void tcommit() throws RollbackException, HeuristicMixedException,
+            HeuristicRollbackException, java.lang.SecurityException,
+            java.lang.IllegalStateException, SystemException {
+<span class="nc bnc" id="L263" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L264">            this.clusterService.tcommit();</span>
+<span class="nc" id="L265">        } else {</span>
+<span class="nc" id="L266">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L268">    }</span>
+
+    @Override
+    public void trollback() throws java.lang.IllegalStateException,
+            java.lang.SecurityException, SystemException {
+<span class="nc bnc" id="L273" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L274">            this.clusterService.trollback();</span>
+<span class="nc" id="L275">        } else {</span>
+<span class="nc" id="L276">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L278">    }</span>
+
+    @Override
+    public Transaction tgetTransaction() throws SystemException {
+<span class="nc bnc" id="L282" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L283">            return this.clusterService.tgetTransaction();</span>
+        } else {
+<span class="nc" id="L285">            return null;</span>
+        }
+    }
+
+    @Override
+    public List&lt;InetAddress&gt; getClusteredControllers() {
+<span class="nc bnc" id="L291" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L292">            return this.clusterService.getClusteredControllers();</span>
+        } else {
+<span class="nc" id="L294">            return null;</span>
+        }
+    }
+
+    @Override
+    public InetAddress getMyAddress() {
+<span class="nc bnc" id="L300" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L301">            return this.clusterService.getMyAddress();</span>
+        } else {
+<span class="nc" id="L303">            return null;</span>
+        }
+    }
+
+    @Override
+    public InetAddress getCoordinatorAddress() {
+<span class="nc bnc" id="L309" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc" id="L310">            return this.clusterService.getActiveAddress();</span>
+        } else {
+<span class="nc" id="L312">            return null;</span>
+        }
+    }
+
+    @Override
+    public boolean amICoordinator() {
+<span class="nc bnc" id="L318" title="All 2 branches missed.">        if (this.clusterService != null) {</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">            return (!this.clusterService.amIStandby());</span>
+        } else {
+<span class="nc" id="L321">            return false;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

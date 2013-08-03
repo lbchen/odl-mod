@@ -1,0 +1,845 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Device.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker_new.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">Device.java</span></div><h1>Device.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2011,2012 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ *
+ *      http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *    Originally created by David Erickson, Stanford University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ *    you may not use this file except in compliance with the
+ *    License. You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing,
+ *    software distributed under the License is distributed on an &quot;AS
+ *    IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ *    express or implied. See the License for the specific language
+ *    governing permissions and limitations under the License.
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+
+import org.opendaylight.controller.hosttracker.Entity;
+import org.opendaylight.controller.hosttracker.IDevice;
+import org.opendaylight.controller.hosttracker.IDeviceService.DeviceField;
+import org.opendaylight.controller.hosttracker.IEntityClass;
+import org.opendaylight.controller.hosttracker.SwitchPort;
+import org.opendaylight.controller.hosttracker.SwitchPort.ErrorStatus;
+import org.opendaylight.controller.hosttracker.hostAware.HostNodeConnector;
+import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.utils.HexEncode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Concrete implementation of {@link IDevice}
+ *
+ * @author readams
+ */
+public class Device implements IDevice {
+<span class="nc" id="L67">    protected static Logger log = LoggerFactory.getLogger(Device.class);</span>
+    public static final short VLAN_UNTAGGED = (short) 0xffff;
+
+    private final Long deviceKey;
+    protected final DeviceManagerImpl deviceManager;
+
+    protected final Entity[] entities;
+    private final IEntityClass entityClass;
+
+    protected final String macAddressString;
+    // the vlan Ids from the entities of this device
+    protected final Short[] vlanIds;
+    protected volatile String dhcpClientName;
+
+    private boolean staticHost;
+
+    /**
+     * These are the old attachment points for the device that were valid no
+     * more than INACTIVITY_TIME ago.
+     */
+    protected volatile List&lt;AttachmentPoint&gt; oldAPs;
+    /**
+     * The current attachment points for the device.
+     */
+    protected volatile List&lt;AttachmentPoint&gt; attachmentPoints;
+
+    // ************
+    // Constructors
+    // ************
+
+    /**
+     * Create a device from an entities
+     *
+     * @param deviceManager
+     *            the device manager for this device
+     * @param deviceKey
+     *            the unique identifier for this device object
+     * @param entity
+     *            the initial entity for the device
+     * @param entityClass
+     *            the entity classes associated with the entity
+     */
+<span class="nc" id="L109">    public Device(DeviceManagerImpl deviceManager, Long deviceKey,</span>
+            Entity entity, IEntityClass entityClass) {
+<span class="nc" id="L111">        this.deviceManager = deviceManager;</span>
+<span class="nc" id="L112">        this.deviceKey = deviceKey;</span>
+<span class="nc" id="L113">        this.entities = new Entity[] { entity };</span>
+<span class="nc" id="L114">        this.macAddressString = HexEncode.longToHexString(entity</span>
+<span class="nc" id="L115">                .getMacAddress());</span>
+<span class="nc" id="L116">        this.entityClass = entityClass;</span>
+<span class="nc" id="L117">        Arrays.sort(this.entities);</span>
+
+<span class="nc" id="L119">        this.dhcpClientName = null;</span>
+<span class="nc" id="L120">        this.oldAPs = null;</span>
+<span class="nc" id="L121">        this.attachmentPoints = null;</span>
+
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        if (entity.getPort() != null) {</span>
+<span class="nc" id="L124">            NodeConnector port = entity.getPort();</span>
+
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            if (deviceManager.isValidAttachmentPoint(port)) {</span>
+                AttachmentPoint ap;
+<span class="nc" id="L128">                ap = new AttachmentPoint(port, entity.getLastSeenTimestamp()</span>
+<span class="nc" id="L129">                        .getTime());</span>
+
+<span class="nc" id="L131">                this.attachmentPoints = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc" id="L132">                this.attachmentPoints.add(ap);</span>
+            }
+        }
+<span class="nc" id="L135">        vlanIds = computeVlandIds();</span>
+<span class="nc" id="L136">    }</span>
+
+    /**
+     * Create a device from a set of entities
+     *
+     * @param deviceManager
+     *            the device manager for this device
+     * @param deviceKey
+     *            the unique identifier for this device object
+     * @param entities
+     *            the initial entities for the device
+     * @param entityClass
+     *            the entity class associated with the entities
+     */
+<span class="nc" id="L150">    public Device(DeviceManagerImpl deviceManager, Long deviceKey,</span>
+            String dhcpClientName, Collection&lt;AttachmentPoint&gt; oldAPs,
+            Collection&lt;AttachmentPoint&gt; attachmentPoints,
+            Collection&lt;Entity&gt; entities, IEntityClass entityClass) {
+<span class="nc" id="L154">        this.deviceManager = deviceManager;</span>
+<span class="nc" id="L155">        this.deviceKey = deviceKey;</span>
+<span class="nc" id="L156">        this.dhcpClientName = dhcpClientName;</span>
+<span class="nc" id="L157">        this.entities = entities.toArray(new Entity[entities.size()]);</span>
+<span class="nc" id="L158">        this.oldAPs = null;</span>
+<span class="nc" id="L159">        this.attachmentPoints = null;</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        if (oldAPs != null) {</span>
+<span class="nc" id="L161">            this.oldAPs = new ArrayList&lt;AttachmentPoint&gt;(oldAPs);</span>
+        }
+<span class="nc bnc" id="L163" title="All 2 branches missed.">        if (attachmentPoints != null) {</span>
+<span class="nc" id="L164">            this.attachmentPoints = new ArrayList&lt;AttachmentPoint&gt;(</span>
+<span class="nc" id="L165">                    attachmentPoints);</span>
+        }
+<span class="nc" id="L167">        this.macAddressString = HexEncode.longToHexString(this.entities[0]</span>
+<span class="nc" id="L168">                .getMacAddress());</span>
+<span class="nc" id="L169">        this.entityClass = entityClass;</span>
+<span class="nc" id="L170">        Arrays.sort(this.entities);</span>
+<span class="nc" id="L171">        vlanIds = computeVlandIds();</span>
+<span class="nc" id="L172">    }</span>
+
+    /**
+     * Construct a new device consisting of the entities from the old device
+     * plus an additional entity. The caller needs to ensure that the additional
+     * entity is not already present in the array
+     *
+     * @param device
+     *            the old device object
+     * @param newEntity
+     *            the entity to add. newEntity must be have the same entity
+     *            class as device
+     * @param if positive indicates the index in the entities array were the new
+     *        entity should be inserted. If negative we will compute the correct
+     *        insertion point
+     */
+<span class="nc" id="L188">    public Device(Device device, Entity newEntity, int insertionpoint) {</span>
+<span class="nc" id="L189">        this.deviceManager = device.deviceManager;</span>
+<span class="nc" id="L190">        this.deviceKey = device.deviceKey;</span>
+<span class="nc" id="L191">        this.dhcpClientName = device.dhcpClientName;</span>
+
+<span class="nc" id="L193">        this.entities = new Entity[device.entities.length + 1];</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if (insertionpoint &lt; 0) {</span>
+<span class="nc" id="L195">            insertionpoint = -(Arrays.binarySearch(device.entities, newEntity) + 1);</span>
+        }
+<span class="nc bnc" id="L197" title="All 2 branches missed.">        if (insertionpoint &gt; 0) {</span>
+            // insertion point is not the beginning:
+            // copy up to insertion point
+<span class="nc" id="L200">            System.arraycopy(device.entities, 0, this.entities, 0,</span>
+<span class="nc" id="L201">                    insertionpoint);</span>
+        }
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        if (insertionpoint &lt; device.entities.length) {</span>
+            // insertion point is not the end
+            // copy from insertion point
+<span class="nc" id="L206">            System.arraycopy(device.entities, insertionpoint, this.entities,</span>
+<span class="nc" id="L207">                    insertionpoint + 1, device.entities.length - insertionpoint);</span>
+        }
+<span class="nc" id="L209">        this.entities[insertionpoint] = newEntity;</span>
+        /*
+         * this.entities = Arrays.&lt;Entity&gt;copyOf(device.entities,
+         * device.entities.length + 1); this.entities[this.entities.length - 1]
+         * = newEntity; Arrays.sort(this.entities);
+         */
+<span class="nc" id="L215">        this.oldAPs = null;</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">        if (device.oldAPs != null) {</span>
+<span class="nc" id="L217">            this.oldAPs = new ArrayList&lt;AttachmentPoint&gt;(device.oldAPs);</span>
+        }
+<span class="nc" id="L219">        this.attachmentPoints = null;</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">        if (device.attachmentPoints != null) {</span>
+<span class="nc" id="L221">            this.attachmentPoints = new ArrayList&lt;AttachmentPoint&gt;(</span>
+<span class="nc" id="L222">                    device.attachmentPoints);</span>
+        }
+
+<span class="nc" id="L225">        this.macAddressString = HexEncode.longToHexString(this.entities[0]</span>
+<span class="nc" id="L226">                .getMacAddress());</span>
+
+<span class="nc" id="L228">        this.entityClass = device.entityClass;</span>
+<span class="nc" id="L229">        vlanIds = computeVlandIds();</span>
+<span class="nc" id="L230">    }</span>
+
+    private Short[] computeVlandIds() {
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        if (entities.length == 1) {</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">            if (entities[0].getVlan() != null) {</span>
+<span class="nc" id="L235">                return new Short[] { entities[0].getVlan() };</span>
+            } else {
+<span class="nc" id="L237">                return new Short[] { Short.valueOf((short) -1) };</span>
+            }
+        }
+
+<span class="nc" id="L241">        TreeSet&lt;Short&gt; vals = new TreeSet&lt;Short&gt;();</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">        for (Entity e : entities) {</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">            if (e.getVlan() == null)</span>
+<span class="nc" id="L244">                vals.add((short) -1);</span>
+            else
+<span class="nc" id="L246">                vals.add(e.getVlan());</span>
+        }
+<span class="nc" id="L248">        return vals.toArray(new Short[vals.size()]);</span>
+    }
+
+    /**
+     * Given a list of attachment points (apList), the procedure would return a
+     * map of attachment points for each L2 domain. L2 domain id is the key.
+     *
+     * @param apList
+     * @return
+     */
+    private Map&lt;Long, AttachmentPoint&gt; getAPMap(List&lt;AttachmentPoint&gt; apList) {
+
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        if (apList == null)</span>
+<span class="nc" id="L261">            return null;</span>
+        // ITopologyService topology = deviceManager.topology;
+
+        // Get the old attachment points and sort them.
+<span class="nc" id="L265">        List&lt;AttachmentPoint&gt; oldAP = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">        if (apList != null)</span>
+<span class="nc" id="L267">            oldAP.addAll(apList);</span>
+
+        // Remove invalid attachment points before sorting.
+<span class="nc" id="L270">        List&lt;AttachmentPoint&gt; tempAP = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L271" title="All 2 branches missed.">        for (AttachmentPoint ap : oldAP) {</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">            if (deviceManager.isValidAttachmentPoint(ap.getPort())) {</span>
+<span class="nc" id="L273">                tempAP.add(ap);</span>
+            }
+        }
+<span class="nc" id="L276">        oldAP = tempAP;</span>
+
+<span class="nc" id="L278">        Collections.sort(oldAP, deviceManager.apComparator);</span>
+
+        // Map of attachment point by L2 domain Id.
+<span class="nc" id="L281">        Map&lt;Long, AttachmentPoint&gt; apMap = new HashMap&lt;Long, AttachmentPoint&gt;();</span>
+
+<span class="nc bnc" id="L283" title="All 2 branches missed.">        for (int i = 0; i &lt; oldAP.size(); ++i) {</span>
+<span class="nc" id="L284">            AttachmentPoint ap = oldAP.get(i);</span>
+            // if this is not a valid attachment point, continue
+<span class="nc bnc" id="L286" title="All 2 branches missed.">            if (!deviceManager.isValidAttachmentPoint(ap.getPort()))</span>
+<span class="nc" id="L287">                continue;</span>
+
+            // long id = topology.getL2DomainId(ap.getSw());
+            // XXX - Missing functionality
+<span class="nc" id="L291">            long id = 0;</span>
+
+<span class="nc" id="L293">            apMap.put(id, ap);</span>
+        }
+
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        if (apMap.isEmpty())</span>
+<span class="nc" id="L297">            return null;</span>
+<span class="nc" id="L298">        return apMap;</span>
+    }
+
+    /**
+     * Remove all attachment points that are older than INACTIVITY_INTERVAL from
+     * the list.
+     *
+     * @param apList
+     * @return
+     */
+    private boolean removeExpiredAttachmentPoints(List&lt;AttachmentPoint&gt; apList) {
+
+<span class="nc" id="L310">        List&lt;AttachmentPoint&gt; expiredAPs = new ArrayList&lt;AttachmentPoint&gt;();</span>
+
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        if (apList == null)</span>
+<span class="nc" id="L313">            return false;</span>
+
+<span class="nc bnc" id="L315" title="All 2 branches missed.">        for (AttachmentPoint ap : apList) {</span>
+<span class="nc" id="L316">            if (ap.getLastSeen() + AttachmentPoint.INACTIVITY_INTERVAL &lt; System</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">                    .currentTimeMillis())</span>
+<span class="nc" id="L318">                expiredAPs.add(ap);</span>
+        }
+<span class="nc bnc" id="L320" title="All 2 branches missed.">        if (expiredAPs.size() &gt; 0) {</span>
+<span class="nc" id="L321">            apList.removeAll(expiredAPs);</span>
+<span class="nc" id="L322">            return true;</span>
+        } else
+<span class="nc" id="L324">            return false;</span>
+    }
+
+    /**
+     * Get a list of duplicate attachment points, given a list of old attachment
+     * points and one attachment point per L2 domain. Given a true attachment
+     * point in the L2 domain, say trueAP, another attachment point in the same
+     * L2 domain, say ap, is duplicate if: 1. ap is inconsistent with trueAP,
+     * and 2. active time of ap is after that of trueAP; and 3. last seen time
+     * of ap is within the last INACTIVITY_INTERVAL
+     *
+     * @param oldAPList
+     * @param apMap
+     * @return
+     */
+    List&lt;AttachmentPoint&gt; getDuplicateAttachmentPoints(
+            List&lt;AttachmentPoint&gt; oldAPList, Map&lt;Long, AttachmentPoint&gt; apMap) {
+        // ITopologyService topology = deviceManager.topology;
+<span class="nc" id="L342">        List&lt;AttachmentPoint&gt; dupAPs = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc" id="L343">        long timeThreshold = System.currentTimeMillis()</span>
+<span class="nc" id="L344">                - AttachmentPoint.INACTIVITY_INTERVAL;</span>
+
+<span class="nc bnc" id="L346" title="All 4 branches missed.">        if (oldAPList == null || apMap == null)</span>
+<span class="nc" id="L347">            return dupAPs;</span>
+
+<span class="nc bnc" id="L349" title="All 2 branches missed.">        for (AttachmentPoint ap : oldAPList) {</span>
+            // XXX - Missing functionality
+            // long id = topology.getL2DomainId(ap.getSw());
+<span class="nc" id="L352">            long id = 0;</span>
+<span class="nc" id="L353">            AttachmentPoint trueAP = apMap.get(id);</span>
+
+<span class="nc bnc" id="L355" title="All 2 branches missed.">            if (trueAP == null)</span>
+<span class="nc" id="L356">                continue;</span>
+            // XXX - Missing functionality
+            // boolean c = (topology.isConsistent(trueAP.getSw(),
+            // trueAP.getPort(),
+            // ap.getSw(), ap.getPort()));
+<span class="nc" id="L361">            boolean c = true;</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">            boolean active = (ap.getActiveSince() &gt; trueAP.getActiveSince());</span>
+<span class="nc bnc" id="L363" title="All 2 branches missed.">            boolean last = ap.getLastSeen() &gt; timeThreshold;</span>
+<span class="nc bnc" id="L364" title="All 6 branches missed.">            if (!c &amp;&amp; active &amp;&amp; last) {</span>
+<span class="nc" id="L365">                dupAPs.add(ap);</span>
+            }
+        }
+
+<span class="nc" id="L369">        return dupAPs;</span>
+    }
+
+    /**
+     * Update the known attachment points. This method is called whenever
+     * topology changes. The method returns true if there's any change to the
+     * list of attachment points -- which indicates a possible device move.
+     *
+     * @return
+     */
+    protected boolean updateAttachmentPoint() {
+<span class="nc" id="L380">        boolean moved = false;</span>
+<span class="nc" id="L381">        this.oldAPs = attachmentPoints;</span>
+<span class="nc bnc" id="L382" title="All 4 branches missed.">        if (attachmentPoints == null || attachmentPoints.isEmpty())</span>
+<span class="nc" id="L383">            return false;</span>
+
+<span class="nc" id="L385">        List&lt;AttachmentPoint&gt; apList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L386" title="All 2 branches missed.">        if (attachmentPoints != null)</span>
+<span class="nc" id="L387">            apList.addAll(attachmentPoints);</span>
+<span class="nc" id="L388">        Map&lt;Long, AttachmentPoint&gt; newMap = getAPMap(apList);</span>
+<span class="nc bnc" id="L389" title="All 4 branches missed.">        if (newMap == null || newMap.size() != apList.size()) {</span>
+<span class="nc" id="L390">            moved = true;</span>
+        }
+
+        // Prepare the new attachment point list.
+<span class="nc bnc" id="L394" title="All 2 branches missed.">        if (moved) {</span>
+<span class="nc" id="L395">            log.info(&quot;updateAttachmentPoint: ap {}  newmap {} &quot;,</span>
+<span class="nc" id="L396">                    attachmentPoints, newMap);</span>
+<span class="nc" id="L397">            List&lt;AttachmentPoint&gt; newAPList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">            if (newMap != null)</span>
+<span class="nc" id="L399">                newAPList.addAll(newMap.values());</span>
+<span class="nc" id="L400">            this.attachmentPoints = newAPList;</span>
+        }
+
+        // Set the oldAPs to null.
+<span class="nc" id="L404">        return moved;</span>
+    }
+
+    /**
+     * Update the list of attachment points given that a new packet-in was seen
+     * from (sw, port) at time (lastSeen). The return value is true if there was
+     * any change to the list of attachment points for the device -- which
+     * indicates a device move.
+     *
+     * @param sw
+     * @param port
+     * @param lastSeen
+     * @return
+     */
+    protected boolean updateAttachmentPoint(NodeConnector port, long lastSeen) {
+        // ITopologyService topology = deviceManager.topology;
+        List&lt;AttachmentPoint&gt; oldAPList;
+        List&lt;AttachmentPoint&gt; apList;
+<span class="nc" id="L422">        boolean oldAPFlag = false;</span>
+
+<span class="nc bnc" id="L424" title="All 2 branches missed.">        if (!deviceManager.isValidAttachmentPoint(port))</span>
+<span class="nc" id="L425">            return false;</span>
+<span class="nc" id="L426">        AttachmentPoint newAP = new AttachmentPoint(port, lastSeen);</span>
+        // Copy the oldAP and ap list.
+<span class="nc" id="L428">        apList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">        if (attachmentPoints != null)</span>
+<span class="nc" id="L430">            apList.addAll(attachmentPoints);</span>
+<span class="nc" id="L431">        oldAPList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L432" title="All 2 branches missed.">        if (oldAPs != null)</span>
+<span class="nc" id="L433">            oldAPList.addAll(oldAPs);</span>
+
+        // if the sw, port is in old AP, remove it from there
+        // and update the lastSeen in that object.
+<span class="nc bnc" id="L437" title="All 2 branches missed.">        if (oldAPList.contains(newAP)) {</span>
+<span class="nc" id="L438">            int index = oldAPList.indexOf(newAP);</span>
+<span class="nc" id="L439">            newAP = oldAPList.remove(index);</span>
+<span class="nc" id="L440">            newAP.setLastSeen(lastSeen);</span>
+<span class="nc" id="L441">            this.oldAPs = oldAPList;</span>
+<span class="nc" id="L442">            oldAPFlag = true;</span>
+        }
+
+        // newAP now contains the new attachment point.
+
+        // Get the APMap is null or empty.
+<span class="nc" id="L448">        Map&lt;Long, AttachmentPoint&gt; apMap = getAPMap(apList);</span>
+<span class="nc bnc" id="L449" title="All 4 branches missed.">        if (apMap == null || apMap.isEmpty()) {</span>
+<span class="nc" id="L450">            apList.add(newAP);</span>
+<span class="nc" id="L451">            attachmentPoints = apList;</span>
+            // there are no old attachment points - since the device exists,
+            // this
+            // may be because the host really moved (so the old AP port went
+            // down);
+            // or it may be because the switch restarted (so old APs were
+            // nullified).
+            // For now we will treat both cases as host moved.
+<span class="nc" id="L459">            return true;</span>
+        }
+
+        // XXX - Missing functionality
+        // long id = topology.getL2DomainId(sw);
+<span class="nc" id="L464">        long id = 0;</span>
+<span class="nc" id="L465">        AttachmentPoint oldAP = apMap.get(id);</span>
+
+<span class="nc bnc" id="L467" title="All 2 branches missed.">        if (oldAP == null) // No attachment on this L2 domain.</span>
+        {
+<span class="nc" id="L469">            apList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc" id="L470">            apList.addAll(apMap.values());</span>
+<span class="nc" id="L471">            apList.add(newAP);</span>
+<span class="nc" id="L472">            this.attachmentPoints = apList;</span>
+<span class="nc" id="L473">            return true; // new AP found on an L2 island.</span>
+        }
+
+        // There is already a known attachment point on the same L2 island.
+        // we need to compare oldAP and newAP.
+<span class="nc bnc" id="L478" title="All 2 branches missed.">        if (oldAP.equals(newAP)) {</span>
+            // nothing to do here. just the last seen has to be changed.
+<span class="nc bnc" id="L480" title="All 2 branches missed.">            if (newAP.lastSeen &gt; oldAP.lastSeen) {</span>
+<span class="nc" id="L481">                oldAP.setLastSeen(newAP.lastSeen);</span>
+            }
+<span class="nc" id="L483">            this.attachmentPoints = new ArrayList&lt;AttachmentPoint&gt;(</span>
+<span class="nc" id="L484">                    apMap.values());</span>
+<span class="nc" id="L485">            return false; // nothing to do here.</span>
+        }
+
+<span class="nc" id="L488">        int x = deviceManager.apComparator.compare(oldAP, newAP);</span>
+<span class="nc bnc" id="L489" title="All 2 branches missed.">        if (x &lt; 0) {</span>
+            // newAP replaces oldAP.
+<span class="nc" id="L491">            apMap.put(id, newAP);</span>
+<span class="nc" id="L492">            this.attachmentPoints = new ArrayList&lt;AttachmentPoint&gt;(</span>
+<span class="nc" id="L493">                    apMap.values());</span>
+
+<span class="nc" id="L495">            oldAPList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L496" title="All 2 branches missed.">            if (oldAPs != null)</span>
+<span class="nc" id="L497">                oldAPList.addAll(oldAPs);</span>
+<span class="nc" id="L498">            oldAPList.add(oldAP);</span>
+<span class="nc" id="L499">            this.oldAPs = oldAPList;</span>
+            // XXX - Missing functionality
+            // if (!topology.isInSameBroadcastDomain(oldAP.getSw(),
+            // oldAP.getPort(),
+            // newAP.getSw(), newAP.getPort()))
+            // return true; // attachment point changed.
+<span class="nc" id="L505">            return true;</span>
+<span class="nc bnc" id="L506" title="All 2 branches missed.">        } else if (oldAPFlag) {</span>
+            // retain oldAP as is. Put the newAP in oldAPs for flagging
+            // possible duplicates.
+<span class="nc" id="L509">            oldAPList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L510" title="All 2 branches missed.">            if (oldAPs != null)</span>
+<span class="nc" id="L511">                oldAPList.addAll(oldAPs);</span>
+            // Add to oldAPList only if it was picked up from the oldAPList
+<span class="nc" id="L513">            oldAPList.add(newAP);</span>
+<span class="nc" id="L514">            this.oldAPs = oldAPList;</span>
+            // XXX - Missing functionality
+            // if (!topology.isInSameBroadcastDomain(oldAP.getSw(),
+            // oldAP.getPort(),
+            // newAP.getSw(), newAP.getPort()))
+            // return true; // attachment point changed.
+<span class="nc" id="L520">            return true;</span>
+        }
+<span class="nc" id="L522">        return false;</span>
+    }
+
+    /**
+     * Delete (sw,port) from the list of list of attachment points and oldAPs.
+     *
+     * @param sw
+     * @param port
+     * @return
+     */
+    public boolean deleteAttachmentPoint(NodeConnector port) {
+<span class="nc" id="L533">        AttachmentPoint ap = new AttachmentPoint(port, 0);</span>
+
+<span class="nc bnc" id="L535" title="All 2 branches missed.">        if (this.oldAPs != null) {</span>
+<span class="nc" id="L536">            ArrayList&lt;AttachmentPoint&gt; apList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc" id="L537">            apList.addAll(this.oldAPs);</span>
+<span class="nc" id="L538">            int index = apList.indexOf(ap);</span>
+<span class="nc bnc" id="L539" title="All 2 branches missed.">            if (index &gt; 0) {</span>
+<span class="nc" id="L540">                apList.remove(index);</span>
+<span class="nc" id="L541">                this.oldAPs = apList;</span>
+            }
+        }
+
+<span class="nc bnc" id="L545" title="All 2 branches missed.">        if (this.attachmentPoints != null) {</span>
+<span class="nc" id="L546">            ArrayList&lt;AttachmentPoint&gt; apList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc" id="L547">            apList.addAll(this.attachmentPoints);</span>
+<span class="nc" id="L548">            int index = apList.indexOf(ap);</span>
+<span class="nc bnc" id="L549" title="All 2 branches missed.">            if (index &gt; 0) {</span>
+<span class="nc" id="L550">                apList.remove(index);</span>
+<span class="nc" id="L551">                this.attachmentPoints = apList;</span>
+<span class="nc" id="L552">                return true;</span>
+            }
+        }
+<span class="nc" id="L555">        return false;</span>
+    }
+
+    // *******
+    // IDevice
+    // *******
+
+    @Override
+    public SwitchPort[] getOldAP() {
+<span class="nc" id="L564">        List&lt;SwitchPort&gt; sp = new ArrayList&lt;SwitchPort&gt;();</span>
+<span class="nc" id="L565">        SwitchPort[] returnSwitchPorts = new SwitchPort[] {};</span>
+<span class="nc bnc" id="L566" title="All 2 branches missed.">        if (oldAPs == null)</span>
+<span class="nc" id="L567">            return returnSwitchPorts;</span>
+<span class="nc bnc" id="L568" title="All 2 branches missed.">        if (oldAPs.isEmpty())</span>
+<span class="nc" id="L569">            return returnSwitchPorts;</span>
+
+        // copy ap list.
+        List&lt;AttachmentPoint&gt; oldAPList;
+<span class="nc" id="L573">        oldAPList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+
+<span class="nc bnc" id="L575" title="All 2 branches missed.">        if (oldAPs != null)</span>
+<span class="nc" id="L576">            oldAPList.addAll(oldAPs);</span>
+<span class="nc" id="L577">        removeExpiredAttachmentPoints(oldAPList);</span>
+
+<span class="nc bnc" id="L579" title="All 2 branches missed.">        if (oldAPList != null) {</span>
+<span class="nc bnc" id="L580" title="All 2 branches missed.">            for (AttachmentPoint ap : oldAPList) {</span>
+<span class="nc" id="L581">                SwitchPort swport = new SwitchPort(ap.getPort());</span>
+<span class="nc" id="L582">                sp.add(swport);</span>
+            }
+        }
+<span class="nc" id="L585">        return sp.toArray(new SwitchPort[sp.size()]);</span>
+    }
+
+    @Override
+    public SwitchPort[] getAttachmentPoints() {
+<span class="nc" id="L590">        return getAttachmentPoints(false);</span>
+    }
+
+    @Override
+    public SwitchPort[] getAttachmentPoints(boolean includeError) {
+<span class="nc" id="L595">        List&lt;SwitchPort&gt; sp = new ArrayList&lt;SwitchPort&gt;();</span>
+<span class="nc" id="L596">        SwitchPort[] returnSwitchPorts = new SwitchPort[] {};</span>
+<span class="nc bnc" id="L597" title="All 2 branches missed.">        if (attachmentPoints == null)</span>
+<span class="nc" id="L598">            return returnSwitchPorts;</span>
+<span class="nc bnc" id="L599" title="All 2 branches missed.">        if (attachmentPoints.isEmpty())</span>
+<span class="nc" id="L600">            return returnSwitchPorts;</span>
+
+        // copy ap list.
+<span class="nc" id="L603">        List&lt;AttachmentPoint&gt; apList = attachmentPoints;</span>
+
+<span class="nc bnc" id="L605" title="All 2 branches missed.">        if (apList != null) {</span>
+<span class="nc bnc" id="L606" title="All 2 branches missed.">            for (AttachmentPoint ap : apList) {</span>
+<span class="nc" id="L607">                SwitchPort swport = new SwitchPort(ap.getPort());</span>
+<span class="nc" id="L608">                sp.add(swport);</span>
+            }
+        }
+
+<span class="nc bnc" id="L612" title="All 2 branches missed.">        if (!includeError)</span>
+<span class="nc" id="L613">            return sp.toArray(new SwitchPort[sp.size()]);</span>
+
+        List&lt;AttachmentPoint&gt; oldAPList;
+<span class="nc" id="L616">        oldAPList = new ArrayList&lt;AttachmentPoint&gt;();</span>
+
+<span class="nc bnc" id="L618" title="All 2 branches missed.">        if (oldAPs != null)</span>
+<span class="nc" id="L619">            oldAPList.addAll(oldAPs);</span>
+
+<span class="nc bnc" id="L621" title="All 2 branches missed.">        if (removeExpiredAttachmentPoints(oldAPList))</span>
+<span class="nc" id="L622">            this.oldAPs = oldAPList;</span>
+
+        List&lt;AttachmentPoint&gt; dupList;
+        // get AP map.
+<span class="nc" id="L626">        Map&lt;Long, AttachmentPoint&gt; apMap = getAPMap(apList);</span>
+<span class="nc" id="L627">        dupList = this.getDuplicateAttachmentPoints(oldAPList, apMap);</span>
+<span class="nc bnc" id="L628" title="All 2 branches missed.">        if (dupList != null) {</span>
+<span class="nc bnc" id="L629" title="All 2 branches missed.">            for (AttachmentPoint ap : dupList) {</span>
+<span class="nc" id="L630">                SwitchPort swport = new SwitchPort(ap.getPort(),</span>
+<span class="nc" id="L631">                        ErrorStatus.DUPLICATE_DEVICE);</span>
+<span class="nc" id="L632">                sp.add(swport);</span>
+            }
+        }
+<span class="nc" id="L635">        return sp.toArray(new SwitchPort[sp.size()]);</span>
+    }
+
+    @Override
+    public Long getDeviceKey() {
+<span class="nc" id="L640">        return deviceKey;</span>
+    }
+
+    @Override
+    public long getMACAddress() {
+        // we assume only one MAC per device for now.
+<span class="nc" id="L646">        return entities[0].getMacAddress();</span>
+    }
+
+    @Override
+    public String getMACAddressString() {
+<span class="nc" id="L651">        return macAddressString;</span>
+    }
+
+    @Override
+    public Short[] getVlanId() {
+<span class="nc" id="L656">        return Arrays.copyOf(vlanIds, vlanIds.length);</span>
+    }
+
+<span class="nc" id="L659">    static final EnumSet&lt;DeviceField&gt; ipv4Fields = EnumSet.of(DeviceField.IPV4);</span>
+
+    @Override
+    public Integer[] getIPv4Addresses() {
+        // XXX - TODO we can cache this result. Let's find out if this
+        // is really a performance bottleneck first though.
+
+<span class="nc" id="L666">        TreeSet&lt;Integer&gt; vals = new TreeSet&lt;Integer&gt;();</span>
+<span class="nc bnc" id="L667" title="All 2 branches missed.">        for (Entity e : entities) {</span>
+<span class="nc bnc" id="L668" title="All 2 branches missed.">            if (e.getIpv4Address() == null)</span>
+<span class="nc" id="L669">                continue;</span>
+
+            // We have an IP address only if among the devices within the class
+            // we have the most recent entity with that IP.
+<span class="nc" id="L673">            boolean validIP = true;</span>
+<span class="nc" id="L674">            Iterator&lt;Device&gt; devices = deviceManager.queryClassByEntity(</span>
+<span class="nc" id="L675">                    entityClass, ipv4Fields, e);</span>
+<span class="nc bnc" id="L676" title="All 2 branches missed.">            while (devices.hasNext()) {</span>
+<span class="nc" id="L677">                Device d = devices.next();</span>
+<span class="nc bnc" id="L678" title="All 2 branches missed.">                if (deviceKey.equals(d.getDeviceKey()))</span>
+<span class="nc" id="L679">                    continue;</span>
+<span class="nc bnc" id="L680" title="All 2 branches missed.">                for (Entity se : d.entities) {</span>
+<span class="nc bnc" id="L681" title="All 2 branches missed.">                    if (se.getIpv4Address() != null</span>
+<span class="nc bnc" id="L682" title="All 2 branches missed.">                            &amp;&amp; se.getIpv4Address().equals(e.getIpv4Address())</span>
+<span class="nc bnc" id="L683" title="All 2 branches missed.">                            &amp;&amp; se.getLastSeenTimestamp() != null</span>
+<span class="nc bnc" id="L684" title="All 2 branches missed.">                            &amp;&amp; 0 &lt; se.getLastSeenTimestamp().compareTo(</span>
+<span class="nc" id="L685">                                    e.getLastSeenTimestamp())) {</span>
+<span class="nc" id="L686">                        validIP = false;</span>
+<span class="nc" id="L687">                        break;</span>
+                    }
+                }
+<span class="nc bnc" id="L690" title="All 2 branches missed.">                if (!validIP)</span>
+<span class="nc" id="L691">                    break;</span>
+            }
+
+<span class="nc bnc" id="L694" title="All 2 branches missed.">            if (validIP)</span>
+<span class="nc" id="L695">                vals.add(e.getIpv4Address());</span>
+        }
+
+<span class="nc" id="L698">        return vals.toArray(new Integer[vals.size()]);</span>
+    }
+
+    @Override
+    public Short[] getSwitchPortVlanIds(SwitchPort swp) {
+<span class="nc" id="L703">        TreeSet&lt;Short&gt; vals = new TreeSet&lt;Short&gt;();</span>
+<span class="nc bnc" id="L704" title="All 2 branches missed.">        for (Entity e : entities) {</span>
+<span class="nc bnc" id="L705" title="All 2 branches missed.">            if (e.getPort().equals(swp.getPort())) {</span>
+<span class="nc bnc" id="L706" title="All 2 branches missed.">                if (e.getVlan() == null)</span>
+<span class="nc" id="L707">                    vals.add(VLAN_UNTAGGED);</span>
+                else
+<span class="nc" id="L709">                    vals.add(e.getVlan());</span>
+            }
+        }
+<span class="nc" id="L712">        return vals.toArray(new Short[vals.size()]);</span>
+    }
+
+    @Override
+    public Date getLastSeen() {
+<span class="nc" id="L717">        Date d = null;</span>
+<span class="nc bnc" id="L718" title="All 2 branches missed.">        for (int i = 0; i &lt; entities.length; i++) {</span>
+<span class="nc bnc" id="L719" title="All 2 branches missed.">            if (d == null</span>
+<span class="nc bnc" id="L720" title="All 2 branches missed.">                    || entities[i].getLastSeenTimestamp().compareTo(d) &gt; 0)</span>
+<span class="nc" id="L721">                d = entities[i].getLastSeenTimestamp();</span>
+        }
+<span class="nc" id="L723">        return d;</span>
+    }
+
+    // ***************
+    // Getters/Setters
+    // ***************
+
+    @Override
+    public IEntityClass getEntityClass() {
+<span class="nc" id="L732">        return entityClass;</span>
+    }
+
+    public Entity[] getEntities() {
+<span class="nc" id="L736">        return entities;</span>
+    }
+
+    public String getDHCPClientName() {
+<span class="nc" id="L740">        return dhcpClientName;</span>
+    }
+
+    // ***************
+    // Utility Methods
+    // ***************
+
+    /**
+     * Check whether the device contains the specified entity
+     *
+     * @param entity
+     *            the entity to search for
+     * @return the index of the entity, or &lt;0 if not found
+     */
+    protected int entityIndex(Entity entity) {
+<span class="nc" id="L755">        return Arrays.binarySearch(entities, entity);</span>
+    }
+
+    // ******
+    // Object
+    // ******
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L764">        final int prime = 31;</span>
+<span class="nc" id="L765">        int result = 1;</span>
+<span class="nc" id="L766">        result = prime * result + Arrays.hashCode(entities);</span>
+<span class="nc" id="L767">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L772" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L773">            return true;</span>
+<span class="nc bnc" id="L774" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L775">            return false;</span>
+<span class="nc bnc" id="L776" title="All 2 branches missed.">        if (getClass() != obj.getClass())</span>
+<span class="nc" id="L777">            return false;</span>
+<span class="nc" id="L778">        Device other = (Device) obj;</span>
+<span class="nc bnc" id="L779" title="All 2 branches missed.">        if (!deviceKey.equals(other.deviceKey))</span>
+<span class="nc" id="L780">            return false;</span>
+<span class="nc bnc" id="L781" title="All 2 branches missed.">        if (!Arrays.equals(entities, other.entities))</span>
+<span class="nc" id="L782">            return false;</span>
+<span class="nc" id="L783">        return true;</span>
+    }
+
+    public HostNodeConnector toHostNodeConnector() {
+<span class="nc" id="L787">        Integer[] ipv4s = this.getIPv4Addresses();</span>
+        try {
+<span class="nc" id="L789">            Entity e = this.entities[this.entities.length-1];</span>
+<span class="nc" id="L790">            NodeConnector n = null;</span>
+<span class="nc bnc" id="L791" title="All 2 branches missed.">            if(e!=null)</span>
+<span class="nc" id="L792">                 n = e.getPort();</span>
+<span class="nc" id="L793">            InetAddress ip = InetAddress.getByName(ipv4s[ipv4s.length - 1]</span>
+<span class="nc" id="L794">                    .toString());</span>
+<span class="nc" id="L795">            byte[] macAddr = macLongToByte(this.getMACAddress());</span>
+<span class="nc" id="L796">            HostNodeConnector nc = new HostNodeConnector(macAddr, ip, n,</span>
+<span class="nc" id="L797">                    (short) 0);</span>
+<span class="nc" id="L798">            nc.setStaticHost(this.isStaticHost());</span>
+<span class="nc" id="L799">            return nc;</span>
+<span class="nc" id="L800">        } catch (Exception e) {</span>
+<span class="nc" id="L801">            return null;</span>
+        }
+    }
+
+    private byte[] macLongToByte(long mac) {
+<span class="nc" id="L806">        byte[] macAddr = new byte[6];</span>
+<span class="nc bnc" id="L807" title="All 2 branches missed.">        for (int i = 0; i &lt; 6; i++) {</span>
+<span class="nc" id="L808">            macAddr[5 - i] = (byte) (mac &gt;&gt; (8 * i));</span>
+        }
+<span class="nc" id="L810">        return macAddr;</span>
+    }
+
+    public boolean isStaticHost(){
+<span class="nc" id="L814">        return this.staticHost;</span>
+    }
+
+    public void setStaticHost(boolean isStatic){
+<span class="nc" id="L818">        this.staticHost = isStatic;</span>
+<span class="nc" id="L819">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L823">        StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L824">        builder.append(&quot;Device [deviceKey=&quot;);</span>
+<span class="nc" id="L825">        builder.append(deviceKey);</span>
+<span class="nc" id="L826">        builder.append(&quot;, entityClass=&quot;);</span>
+<span class="nc" id="L827">        builder.append(entityClass.getName());</span>
+<span class="nc" id="L828">        builder.append(&quot;, MAC=&quot;);</span>
+<span class="nc" id="L829">        builder.append(macAddressString);</span>
+<span class="nc" id="L830">        builder.append(&quot;, IPs=[&quot;);</span>
+<span class="nc" id="L831">        boolean isFirst = true;</span>
+<span class="nc bnc" id="L832" title="All 2 branches missed.">        for (Integer ip : getIPv4Addresses()) {</span>
+<span class="nc bnc" id="L833" title="All 2 branches missed.">            if (!isFirst)</span>
+<span class="nc" id="L834">                builder.append(&quot;, &quot;);</span>
+<span class="nc" id="L835">            isFirst = false;</span>
+            // builder.append(IPv4.fromIPv4Address(ip));
+<span class="nc" id="L837">            builder.append(ip);</span>
+        }
+<span class="nc" id="L839">        builder.append(&quot;], APs=&quot;);</span>
+<span class="nc" id="L840">        builder.append(Arrays.toString(getAttachmentPoints(true)));</span>
+<span class="nc" id="L841">        builder.append(&quot;]&quot;);</span>
+<span class="nc" id="L842">        return builder.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

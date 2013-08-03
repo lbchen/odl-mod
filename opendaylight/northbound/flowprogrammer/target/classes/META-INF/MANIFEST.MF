@@ -1,0 +1,26 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375481158470
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-ManifestVersion: 2
+Bundle-Name: flowprogrammer.northbound
+Bundle-SymbolicName: org.opendaylight.controller.flowprogrammer.northbou
+ nd
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Ignore-Package: org.codehaus.enunciate.jaxrs
+Import-Package: com.sun.jersey.spi.container.servlet;version="[1.17,2)",
+ javax.ws.rs;version="[1.1,2)",javax.ws.rs.core;version="[1.1,2)",javax.
+ xml.bind,javax.xml.bind.annotation,org.opendaylight.controller.containe
+ rmanager;version="[0.4,1)",org.opendaylight.controller.forwardingrulesm
+ anager;version="[0.4,1)",org.opendaylight.controller.northbound.commons
+ ;version="[0.4,1)",org.opendaylight.controller.northbound.commons.excep
+ tion;version="[0.4,1)",org.opendaylight.controller.northbound.commons.u
+ tils;version="[0.4,1)",org.opendaylight.controller.sal.authorization;ve
+ rsion="[0.5,1)",org.opendaylight.controller.sal.core;version="[0.5,1)",
+ org.opendaylight.controller.sal.utils;version="[0.5,1)",org.opendayligh
+ t.controller.switchmanager;version="[0.4,1)",org.opendaylight.controlle
+ r.usermanager;version="[0.4,1)",org.slf4j;version="[1.7,2)"
+Originally-Created-By: Apache Maven Bundle Plugin
+Tool: Bnd-1.50.0
+Web-ContextPath: /controller/nb/v2/flow

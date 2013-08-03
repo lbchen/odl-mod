@@ -1,0 +1,24 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375296002658
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-Activator: org.opendaylight.controller.samples.simpleforwarding.i
+ nternal.Activator
+Bundle-ManifestVersion: 2
+Bundle-Name: samples.simpleforwarding
+Bundle-SymbolicName: org.opendaylight.controller.samples.simpleforwardin
+ g
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Import-Package: org.apache.commons.lang3.builder;version="[3.1,4)",org.a
+ pache.felix.dm;version="[3.0,4)",org.junit;resolution:=optional,org.ope
+ ndaylight.controller.clustering.services,org.opendaylight.controller.fo
+ rwardingrulesmanager,org.opendaylight.controller.hosttracker,org.openda
+ ylight.controller.hosttracker.hostAware,org.opendaylight.controller.sal
+ .action,org.opendaylight.controller.sal.core,org.opendaylight.controlle
+ r.sal.flowprogrammer,org.opendaylight.controller.sal.match,org.opendayl
+ ight.controller.sal.packet,org.opendaylight.controller.sal.routing,org.
+ opendaylight.controller.sal.utils,org.opendaylight.controller.switchman
+ ager,org.opendaylight.controller.topologymanager,org.slf4j;version="[1.
+ 7,2)"
+Tool: Bnd-1.50.0

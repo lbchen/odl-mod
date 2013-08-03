@@ -1,0 +1,26 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1373048398121
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-Activator: org.opendaylight.controller.forwardingrulesmanager.int
+ ernal.Activator
+Bundle-ManifestVersion: 2
+Bundle-Name: forwardingrulesmanager.implementation
+Bundle-SymbolicName: org.opendaylight.controller.forwardingrulesmanager.
+ implementation
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Import-Package: javax.xml.bind,javax.xml.bind.annotation,org.apache.comm
+ ons.lang3.builder;version="[3.1,4)",org.apache.felix.dm;version="[3.0,4
+ )",org.eclipse.osgi.framework.console;version="[1.1,2)",org.opendayligh
+ t.controller.clustering.services,org.opendaylight.controller.configurat
+ ion,org.opendaylight.controller.forwardingrulesmanager,org.opendaylight
+ .controller.hosttracker,org.opendaylight.controller.hosttracker.hostAwa
+ re,org.opendaylight.controller.sal.action,org.opendaylight.controller.s
+ al.core,org.opendaylight.controller.sal.flowprogrammer,org.opendaylight
+ .controller.sal.match,org.opendaylight.controller.sal.packet,org.openda
+ ylight.controller.sal.utils,org.opendaylight.controller.switchmanager,o
+ rg.osgi.framework;version="[1.7,2)",org.osgi.service.component;version=
+ "[1.2,2)",org.slf4j;version="[1.7,2)"
+Require-Bundle: org.opendaylight.controller.hosttracker
+Tool: Bnd-1.50.0

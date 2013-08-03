@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SpanConfig.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">switchmanager</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.switchmanager</a> &gt; <span class="el_source">SpanConfig.java</span></div><h1>SpanConfig.java</h1><pre class="source lang-java linenums">
+/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.switchmanager;
+
+import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.opendaylight.controller.sal.core.ConstructionException;
+import org.opendaylight.controller.sal.core.Node;
+import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.core.NodeConnector.NodeConnectorIDType;
+import org.opendaylight.controller.sal.utils.GUIField;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * The class represents a Span Port configuration for a network node.
+ */
+public class SpanConfig implements Serializable {
+<span class="nc" id="L29">    protected static final Logger logger = LoggerFactory</span>
+<span class="nc" id="L30">    .getLogger(SpanConfig.class);</span>
+    private static final long serialVersionUID = 1L;
+<span class="nc" id="L32">    private static final String guiFields[] = { GUIField.NODE.toString(),</span>
+<span class="nc" id="L33">            GUIField.SPANPORTS.toString() };</span>
+
+    // Order matters: JSP file expects following fields in the following order
+    private String nodeId;
+    private String spanPort;
+
+<span class="nc" id="L39">    public SpanConfig() {</span>
+<span class="nc" id="L40">    }</span>
+
+    public String getNodeId() {
+<span class="nc" id="L43">        return nodeId;</span>
+    }
+
+    public String getSpanPort() {
+<span class="nc" id="L47">        return spanPort;</span>
+    }
+
+    public Node getNode() {
+<span class="nc" id="L51">        return Node.fromString(nodeId);</span>
+    }
+
+    private boolean hasValidNodeId() {
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        return (getNode() != null);</span>
+    }
+
+    private boolean hasValidSpanPort() {
+<span class="nc bnc" id="L59" title="All 4 branches missed.">        return (spanPort != null &amp;&amp; !spanPort.isEmpty());</span>
+    }
+
+    public boolean isValidConfig() {
+<span class="nc bnc" id="L63" title="All 4 branches missed.">        return (hasValidNodeId() &amp;&amp; hasValidSpanPort());</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L68">        final int prime = 31;</span>
+<span class="nc" id="L69">        int result = 1;</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        result = prime * result + ((nodeId == null) ? 0 : nodeId.hashCode());</span>
+<span class="nc" id="L71">        result = prime * result</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">                + ((spanPort == null) ? 0 : spanPort.hashCode());</span>
+<span class="nc" id="L73">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L79">            return true;</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L81">            return false;</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (getClass() != obj.getClass())</span>
+<span class="nc" id="L83">            return false;</span>
+<span class="nc" id="L84">        SpanConfig other = (SpanConfig) obj;</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (nodeId == null) {</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            if (other.nodeId != null)</span>
+<span class="nc" id="L87">                return false;</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        } else if (!nodeId.equals(other.nodeId))</span>
+<span class="nc" id="L89">            return false;</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        if (spanPort == null) {</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">            if (other.spanPort != null)</span>
+<span class="nc" id="L92">                return false;</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        } else if (!spanPort.equals(other.spanPort))</span>
+<span class="nc" id="L94">            return false;</span>
+<span class="nc" id="L95">        return true;</span>
+    }
+
+    public static ArrayList&lt;String&gt; getFieldsNames() {
+<span class="nc" id="L99">        ArrayList&lt;String&gt; fieldList = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        for (Field fld : SpanConfig.class.getDeclaredFields()) {</span>
+<span class="nc" id="L101">            fieldList.add(fld.getName());</span>
+        }
+        //remove the two static fields
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        for (short i = 0; i &lt; 2; i++) {</span>
+<span class="nc" id="L105">            fieldList.remove(0);</span>
+        }
+<span class="nc" id="L107">        return fieldList;</span>
+    }
+
+    public static List&lt;String&gt; getGuiFieldsNames() {
+<span class="nc" id="L111">        List&lt;String&gt; fieldList = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        for (String str : guiFields) {</span>
+<span class="nc" id="L113">            fieldList.add(str);</span>
+        }
+<span class="nc" id="L115">        return fieldList;</span>
+    }
+
+    public ArrayList&lt;NodeConnector&gt; getPortArrayList() {
+<span class="nc" id="L119">        Node node = Node.fromString(nodeId);</span>
+<span class="nc" id="L120">        ArrayList&lt;NodeConnector&gt; portList = new ArrayList&lt;NodeConnector&gt;();</span>
+<span class="nc" id="L121">        String[] elemArray = spanPort.split(&quot;,&quot;);</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        for (String elem : elemArray) {</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">            if (elem.contains(&quot;-&quot;)) {</span>
+<span class="nc" id="L124">                String[] limits = elem.split(&quot;-&quot;);</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">                for (short j = Short.valueOf(limits[0]); j &lt;= Short</span>
+<span class="nc" id="L126">                        .valueOf(limits[1]); j++) {</span>
+                    try {
+<span class="nc" id="L128">                        portList.add(new NodeConnector(</span>
+<span class="nc" id="L129">                                NodeConnectorIDType.OPENFLOW, Short.valueOf(j),</span>
+<span class="nc" id="L130">                                node));</span>
+<span class="nc" id="L131">                    } catch (ConstructionException e) {</span>
+<span class="nc" id="L132">                        logger.error(&quot;&quot;,e);</span>
+                    }
+                }
+<span class="nc" id="L135">            } else {</span>
+                try {
+<span class="nc" id="L137">                    portList.add(new NodeConnector(</span>
+<span class="nc" id="L138">                            NodeConnectorIDType.OPENFLOW, Short.valueOf(elem),</span>
+<span class="nc" id="L139">                            node));</span>
+<span class="nc" id="L140">                } catch (NumberFormatException e) {</span>
+<span class="nc" id="L141">                    logger.error(&quot;&quot;,e);</span>
+<span class="nc" id="L142">                } catch (ConstructionException e) {</span>
+<span class="nc" id="L143">                    logger.error(&quot;&quot;,e);</span>
+                }
+            }
+        }
+<span class="nc" id="L147">        return portList;</span>
+    }
+
+    public boolean matchNode(String nodeId) {
+<span class="nc" id="L151">        return this.nodeId.equals(nodeId);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

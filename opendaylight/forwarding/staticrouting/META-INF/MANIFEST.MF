@@ -1,0 +1,27 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375489225748
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-Activator: org.opendaylight.controller.forwarding.staticrouting.i
+ nternal.Activator
+Bundle-ManifestVersion: 2
+Bundle-Name: forwarding.staticrouting
+Bundle-SymbolicName: org.opendaylight.controller.forwarding.staticroutin
+ g
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Export-Package: org.opendaylight.controller.forwarding.staticrouting;use
+ s:="org.opendaylight.controller.sal.utils,org.opendaylight.controller.s
+ al.core,org.opendaylight.controller.sal.packet,org.opendaylight.control
+ ler.hosttracker.hostAware,org.slf4j";version="0.4.0.SNAPSHOT"
+Import-Package: org.apache.commons.lang3.builder;version="[3.1,4)",org.a
+ pache.felix.dm;version="[3.0,4)",org.eclipse.osgi.framework.console;ver
+ sion="[1.1,2)",org.opendaylight.controller.clustering.services,org.open
+ daylight.controller.configuration,org.opendaylight.controller.forwardin
+ grulesmanager,org.opendaylight.controller.hosttracker,org.opendaylight.
+ controller.hosttracker.hostAware,org.opendaylight.controller.sal.core,o
+ rg.opendaylight.controller.sal.packet,org.opendaylight.controller.sal.r
+ outing,org.opendaylight.controller.sal.utils,org.opendaylight.controlle
+ r.topologymanager,org.osgi.framework;version="[1.7,2)",org.slf4j;versio
+ n="[1.7,2)"
+Tool: Bnd-1.50.0

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DeviceIndexInterator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker_new.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">DeviceIndexInterator.java</span></div><h1>DeviceIndexInterator.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2012 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ *
+ *      http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *    Originally created by David Erickson, Stanford University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ *    you may not use this file except in compliance with the
+ *    License. You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing,
+ *    software distributed under the License is distributed on an &quot;AS
+ *    IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ *    express or implied. See the License for the specific language
+ *    governing permissions and limitations under the License.
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import java.util.Iterator;
+
+/**
+ * An iterator for handling device index queries
+ */
+public class DeviceIndexInterator implements Iterator&lt;Device&gt; {
+    private DeviceManagerImpl deviceManager;
+    private Iterator&lt;Long&gt; subIterator;
+
+    /**
+     * Construct a new device index iterator referring to a device manager
+     * instance and an iterator over device keys
+     *
+     * @param deviceManager
+     *            the device manager
+     * @param subIterator
+     *            an iterator over device keys
+     */
+    public DeviceIndexInterator(DeviceManagerImpl deviceManager,
+            Iterator&lt;Long&gt; subIterator) {
+<span class="nc" id="L56">        super();</span>
+<span class="nc" id="L57">        this.deviceManager = deviceManager;</span>
+<span class="nc" id="L58">        this.subIterator = subIterator;</span>
+<span class="nc" id="L59">    }</span>
+
+    @Override
+    public boolean hasNext() {
+<span class="nc" id="L63">        return subIterator.hasNext();</span>
+    }
+
+    @Override
+    public Device next() {
+<span class="nc" id="L68">        Long next = subIterator.next();</span>
+<span class="nc" id="L69">        return deviceManager.deviceMap.get(next);</span>
+    }
+
+    @Override
+    public void remove() {
+<span class="nc" id="L74">        subIterator.remove();</span>
+<span class="nc" id="L75">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Activator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">Activator.java</span></div><h1>Activator.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import org.apache.felix.dm.Component;
+import org.opendaylight.controller.clustering.services.IClusterContainerServices;
+import org.opendaylight.controller.hosttracker.IfHostListener;
+import org.opendaylight.controller.hosttracker.IfIptoHost;
+import org.opendaylight.controller.hosttracker.IfNewHostNotify;
+import org.opendaylight.controller.hosttracker.hostAware.IHostFinder;
+import org.opendaylight.controller.sal.core.ComponentActivatorAbstractBase;
+import org.opendaylight.controller.switchmanager.IInventoryListener;
+import org.opendaylight.controller.switchmanager.ISwitchManager;
+import org.opendaylight.controller.switchmanager.ISwitchManagerAware;
+import org.opendaylight.controller.topologymanager.ITopologyManager;
+import org.opendaylight.controller.topologymanager.ITopologyManagerAware;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+<span class="nc" id="L26">public class Activator extends ComponentActivatorAbstractBase {</span>
+<span class="nc" id="L27">    protected static final Logger logger = LoggerFactory</span>
+<span class="nc" id="L28">            .getLogger(Activator.class);</span>
+
+    /**
+     * Function called when the activator starts just after some initializations
+     * are done by the ComponentActivatorAbstractBase.
+     *
+     */
+    public void init() {
+<span class="nc" id="L36">    }</span>
+
+    /**
+     * Function called when the activator stops just before the cleanup done by
+     * ComponentActivatorAbstractBase
+     *
+     */
+    public void destroy() {
+<span class="nc" id="L44">    }</span>
+
+    /**
+     * Function that is used to communicate to dependency manager the list of
+     * known implementations for services inside a container
+     *
+     *
+     * @return An array containing all the CLASS objects that will be
+     *         instantiated in order to get an fully working implementation
+     *         Object
+     */
+    public Object[] getImplementations() {
+<span class="nc" id="L56">        Object[] res = { HostTracker.class };</span>
+<span class="nc" id="L57">        return res;</span>
+    }
+
+    /**
+     * Function that is called when configuration of the dependencies is
+     * required.
+     *
+     * @param c
+     *            dependency manager Component object, used for configuring the
+     *            dependencies exported and imported
+     * @param imp
+     *            Implementation class that is being configured, needed as long
+     *            as the same routine can configure multiple implementations
+     * @param containerName
+     *            The containerName being configured, this allow also optional
+     *            per-container different behavior if needed, usually should not
+     *            be the case though.
+     */
+    public void configureInstance(Component c, Object imp, String containerName) {
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (imp.equals(HostTracker.class)) {</span>
+            // export the service
+<span class="nc" id="L78">            c.setInterface(</span>
+<span class="nc" id="L79">                    new String[] { ISwitchManagerAware.class.getName(),</span>
+<span class="nc" id="L80">                            IInventoryListener.class.getName(),</span>
+<span class="nc" id="L81">                            IfIptoHost.class.getName(),</span>
+<span class="nc" id="L82">                            IfHostListener.class.getName(),</span>
+<span class="nc" id="L83">                            ITopologyManagerAware.class.getName() }, null);</span>
+
+<span class="nc" id="L85">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L86">                    .setService(ISwitchManager.class)</span>
+<span class="nc" id="L87">                    .setCallbacks(&quot;setSwitchManager&quot;, &quot;unsetSwitchManager&quot;)</span>
+<span class="nc" id="L88">                    .setRequired(false));</span>
+<span class="nc" id="L89">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L90">                    .setService(IClusterContainerServices.class)</span>
+<span class="nc" id="L91">                    .setCallbacks(&quot;setClusterContainerService&quot;,</span>
+<span class="nc" id="L92">                            &quot;unsetClusterContainerService&quot;).setRequired(true));</span>
+<span class="nc" id="L93">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L94">                    .setService(IHostFinder.class)</span>
+<span class="nc" id="L95">                    .setCallbacks(&quot;setArpHandler&quot;, &quot;unsetArpHandler&quot;)</span>
+<span class="nc" id="L96">                    .setRequired(false));</span>
+<span class="nc" id="L97">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L98">                    .setService(ITopologyManager.class)</span>
+<span class="nc" id="L99">                    .setCallbacks(&quot;setTopologyManager&quot;, &quot;unsetTopologyManager&quot;)</span>
+<span class="nc" id="L100">                    .setRequired(false));</span>
+<span class="nc" id="L101">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L102">                    .setService(IfNewHostNotify.class)</span>
+<span class="nc" id="L103">                    .setCallbacks(&quot;setnewHostNotify&quot;, &quot;unsetnewHostNotify&quot;)</span>
+<span class="nc" id="L104">                    .setRequired(false));</span>
+        }
+<span class="nc" id="L106">    }</span>
+
+    /**
+     * Method which tells how many Global implementations are supported by the
+     * bundle. This way we can tune the number of components created. This
+     * components will be created ONLY at the time of bundle startup and will be
+     * destroyed only at time of bundle destruction, this is the major
+     * difference with the implementation retrieved via getImplementations where
+     * all of them are assumed to be in a container !
+     *
+     *
+     * @return The list of implementations the bundle will support, in Global
+     *         version
+     */
+    protected Object[] getGlobalImplementations() {
+<span class="nc" id="L121">        return null;</span>
+    }
+
+    /**
+     * Configure the dependency for a given instance Global
+     *
+     * @param c
+     *            Component assigned for this instance, this will be what will
+     *            be used for configuration
+     * @param imp
+     *            implementation to be configured
+     * @param containerName
+     *            container on which the configuration happens
+     */
+    protected void configureGlobalInstance(Component c, Object imp) {
+<span class="nc" id="L136">        if (imp.equals(HostTracker.class)) {</span>
+        }
+<span class="nc" id="L138">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

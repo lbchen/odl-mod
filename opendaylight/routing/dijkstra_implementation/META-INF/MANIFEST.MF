@@ -1,0 +1,21 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375489203177
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-Activator: org.opendaylight.controller.routing.dijkstra_implement
+ ation.internal.Activator
+Bundle-ManifestVersion: 2
+Bundle-Name: routing.dijkstra_implementation
+Bundle-SymbolicName: org.opendaylight.controller.routing.dijkstra_implem
+ entation
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Import-Package: edu.uci.ics.jung.algorithms.shortestpath,edu.uci.ics.jun
+ g.graph,edu.uci.ics.jung.graph.util,org.apache.commons.collections15,or
+ g.apache.felix.dm;version="[3.0,4)",org.junit;resolution:=optional,org.
+ opendaylight.controller.sal.core,org.opendaylight.controller.sal.reader
+ ,org.opendaylight.controller.sal.routing,org.opendaylight.controller.sa
+ l.topology,org.opendaylight.controller.sal.utils,org.opendaylight.contr
+ oller.switchmanager,org.opendaylight.controller.topologymanager,org.slf
+ 4j;version="[1.7,2)"
+Tool: Bnd-1.50.0

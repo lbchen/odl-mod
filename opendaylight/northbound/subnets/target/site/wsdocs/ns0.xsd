@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema version="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="subnetConfigs" type="subnetConfigs"/>
+  <xs:element name="subnetConfig" type="subnetConfig"/>
+  <xs:complexType name="subnetConfigs">
+    <xs:sequence>
+      <xs:element name="subnetConfig" type="subnetConfig" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="subnetConfig">
+    <xs:sequence>
+      <xs:element name="nodePorts" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="subnet" type="xs:string"/>
+  </xs:complexType>
+</xs:schema>

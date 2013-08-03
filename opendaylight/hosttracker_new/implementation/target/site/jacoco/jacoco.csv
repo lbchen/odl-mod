@@ -1,0 +1,18 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceUniqueIndex,136,0,14,0,32,0,15,0,8,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceManagerImpl.AttachmentPointComparator,107,0,30,0,34,0,17,0,2,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceManagerImpl.new Runnable() {...},20,0,2,0,7,0,3,0,2,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceMultiIndex,140,0,12,0,34,0,13,0,7,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,Device,1448,0,194,0,355,0,129,0,32,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DefaultEntityClassifier,21,0,0,0,9,0,7,0,7,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceIndex,58,0,8,0,15,0,6,0,2,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,AttachmentPoint,152,0,18,0,46,0,21,0,12,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,IndexedEntity,273,0,63,0,73,0,41,0,5,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceManagerImpl,2619,0,366,0,668,0,257,0,70,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceIndexInterator,29,0,0,0,9,0,4,0,4,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,Activator,113,0,2,0,34,0,9,0,8,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceManagerImpl.DeviceUpdate,48,0,0,0,9,0,2,0,2,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceManagerImpl.ClassState,51,0,4,0,11,0,3,0,1,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DefaultEntityClassifier.DefaultEntityClass,11,0,0,0,5,0,3,0,3,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceManagerImpl.DeviceUpdate.Change,60,0,0,0,3,0,4,0,4,0
+hosttracker_new.implementation,org.opendaylight.controller.hosttracker.internal,DeviceIterator,143,0,32,0,42,0,18,0,2,0

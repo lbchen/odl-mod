@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GetUpdatesContainer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">clustering.services-implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.clustering.services_implementation.internal</a> &gt; <span class="el_source">GetUpdatesContainer.java</span></div><h1>GetUpdatesContainer.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.clustering.services_implementation.internal;
+
+import org.opendaylight.controller.clustering.services.IGetUpdates;
+import org.opendaylight.controller.clustering.services.ICacheUpdateAware;
+
+public class GetUpdatesContainer&lt;K,V&gt; implements IGetUpdates&lt;K,V&gt; {
+    private ICacheUpdateAware&lt;K,V&gt; toBeUpdated;
+    private String containerName;
+    private String cacheName;
+
+<span class="nc" id="L19">    public GetUpdatesContainer(ICacheUpdateAware&lt;K,V&gt; i, String containerName,</span>
+                               String cacheName) {
+<span class="nc" id="L21">        this.toBeUpdated = i;</span>
+<span class="nc" id="L22">        this.containerName = containerName;</span>
+<span class="nc" id="L23">        this.cacheName = cacheName;</span>
+<span class="nc" id="L24">    }</span>
+
+    public ICacheUpdateAware&lt;K,V&gt; whichListener() {
+<span class="nc" id="L27">        return this.toBeUpdated;</span>
+    }
+
+    @Override
+    public void entryCreated(K key, String containerName, String cacheName,
+                             boolean local) {
+<span class="nc bnc" id="L33" title="All 2 branches missed.">        if (this.toBeUpdated != null) {</span>
+<span class="nc" id="L34">            this.toBeUpdated.entryCreated(key, cacheName, local);</span>
+        }
+<span class="nc" id="L36">    }</span>
+
+    @Override
+    public void entryUpdated(K key, V new_value, String containerName,
+                             String cacheName,
+                             boolean local) {
+<span class="nc bnc" id="L42" title="All 2 branches missed.">        if (this.toBeUpdated != null) {</span>
+<span class="nc" id="L43">            this.toBeUpdated.entryUpdated(key, new_value, cacheName, local);</span>
+        }
+<span class="nc" id="L45">    }</span>
+
+    @Override
+    public void entryDeleted(K key, String containerName, String cacheName,
+                             boolean local) {
+<span class="nc bnc" id="L50" title="All 2 branches missed.">        if (this.toBeUpdated != null) {</span>
+<span class="nc" id="L51">            this.toBeUpdated.entryDeleted(key, cacheName, local);</span>
+        }
+<span class="nc" id="L53">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

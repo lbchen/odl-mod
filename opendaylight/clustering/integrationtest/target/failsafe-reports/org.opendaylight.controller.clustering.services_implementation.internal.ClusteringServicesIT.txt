@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: org.opendaylight.controller.clustering.services_implementation.internal.ClusteringServicesIT
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 13.059 sec - in org.opendaylight.controller.clustering.services_implementation.internal.ClusteringServicesIT

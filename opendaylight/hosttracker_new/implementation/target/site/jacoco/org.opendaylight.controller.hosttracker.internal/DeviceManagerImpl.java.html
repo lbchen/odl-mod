@@ -1,0 +1,2507 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DeviceManagerImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker_new.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">DeviceManagerImpl.java</span></div><h1>DeviceManagerImpl.java</h1><pre class="source lang-java linenums"><span class="nc" id="L1">/*</span>
+ * Copyright (c) 2011,2012 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ *
+ *      http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *    Originally created by David Erickson, Stanford University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ *    you may not use this file except in compliance with the
+ *    License. You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing,
+ *    software distributed under the License is distributed on an &quot;AS
+ *    IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ *    express or implied. See the License for the specific language
+ *    governing permissions and limitations under the License.
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import static org.opendaylight.controller.hosttracker.internal.DeviceManagerImpl.DeviceUpdate.Change.ADD;
+import static org.opendaylight.controller.hosttracker.internal.DeviceManagerImpl.DeviceUpdate.Change.CHANGE;
+import static org.opendaylight.controller.hosttracker.internal.DeviceManagerImpl.DeviceUpdate.Change.DELETE;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import org.opendaylight.controller.hosttracker.Entity;
+import org.opendaylight.controller.hosttracker.IDevice;
+import org.opendaylight.controller.hosttracker.IDeviceListener;
+import org.opendaylight.controller.hosttracker.IDeviceService;
+import org.opendaylight.controller.hosttracker.IEntityClass;
+import org.opendaylight.controller.hosttracker.IEntityClassListener;
+import org.opendaylight.controller.hosttracker.IEntityClassifierService;
+import org.opendaylight.controller.hosttracker.IfIptoHost;
+import org.opendaylight.controller.hosttracker.IfNewHostNotify;
+import org.opendaylight.controller.hosttracker.SwitchPort;
+import org.opendaylight.controller.hosttracker.hostAware.HostNodeConnector;
+import org.opendaylight.controller.sal.core.ConstructionException;
+import org.opendaylight.controller.sal.core.Edge;
+import org.opendaylight.controller.sal.core.Host;
+import org.opendaylight.controller.sal.core.Node;
+import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.core.NodeConnector.NodeConnectorIDType;
+import org.opendaylight.controller.sal.core.Tier;
+import org.opendaylight.controller.sal.core.UpdateType;
+import org.opendaylight.controller.sal.packet.ARP;
+import org.opendaylight.controller.sal.packet.Ethernet;
+import org.opendaylight.controller.sal.packet.IDataPacketService;
+import org.opendaylight.controller.sal.packet.IListenDataPacket;
+import org.opendaylight.controller.sal.packet.Packet;
+import org.opendaylight.controller.sal.packet.PacketResult;
+import org.opendaylight.controller.sal.packet.RawPacket;
+import org.opendaylight.controller.sal.packet.address.DataLinkAddress;
+import org.opendaylight.controller.sal.packet.address.EthernetAddress;
+import org.opendaylight.controller.sal.topology.TopoEdgeUpdate;
+import org.opendaylight.controller.sal.utils.HexEncode;
+import org.opendaylight.controller.sal.utils.ListenerDispatcher;
+import org.opendaylight.controller.sal.utils.MultiIterator;
+import org.opendaylight.controller.sal.utils.NetUtils;
+import org.opendaylight.controller.sal.utils.SingletonTask;
+import org.opendaylight.controller.sal.utils.Status;
+import org.opendaylight.controller.sal.utils.StatusCode;
+import org.opendaylight.controller.switchmanager.ISwitchManager;
+import org.opendaylight.controller.topologymanager.ITopologyManager;
+import org.opendaylight.controller.topologymanager.ITopologyManagerAware;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * DeviceManager creates Devices based upon MAC addresses seen in the network.
+ * It tracks any network addresses mapped to the Device, and its location within
+ * the network.
+ *
+ * @author readams
+ */
+<span class="nc" id="L112">public class DeviceManagerImpl implements IDeviceService, IEntityClassListener,</span>
+        IListenDataPacket, ITopologyManagerAware, IfIptoHost {
+<span class="nc" id="L114">    protected static Logger logger = LoggerFactory</span>
+<span class="nc" id="L115">            .getLogger(DeviceManagerImpl.class);</span>
+
+    public static final String MODULE_NAME = &quot;devicemanager&quot;;
+
+    // protected ITopologyService topology;
+    // protected IStorageSourceService storageSource;
+    // protected IRestApiService restApi;
+    // protected IThreadPoolService threadPool;
+    // protected IFlowReconcileService flowReconcileMgr;
+    // protected IFlowReconcileEngineService flowReconcileEngine;
+    // protected IDebugCounterService debugCounters;
+    // private ISyncService syncService;
+    // private IStoreClient&lt;String,DeviceSyncRepresentation&gt; storeClient;
+    // private DeviceSyncManager deviceSyncManager;
+
+    private ITopologyManager topology;
+<span class="nc" id="L131">    private ISwitchManager switchManager = null;</span>
+<span class="nc" id="L132">    private IDataPacketService dataPacketService = null;</span>
+
+    public static final String CNT_INCOMING = MODULE_NAME + &quot;-incoming&quot;;
+    public static final String CNT_RECONCILE_REQUEST = MODULE_NAME
+            + &quot;-reconcileRequest&quot;;
+    public static final String CNT_RECONCILE_NO_SOURCE = MODULE_NAME
+            + &quot;-reconcileNoSourceDevice&quot;;
+    public static final String CNT_RECONCILE_NO_DEST = MODULE_NAME
+            + &quot;-reconcileNoDestDevice&quot;;
+    public static final String CNT_BROADCAST_SOURCE = MODULE_NAME
+            + &quot;-broadcastSource&quot;;
+    public static final String CNT_NO_SOURCE = MODULE_NAME + &quot;-noSourceDevice&quot;;
+    public static final String CNT_NO_DEST = MODULE_NAME + &quot;-noDestDevice&quot;;
+    public static final String CNT_DHCP_CLIENT_NAME_SNOOPED = MODULE_NAME
+            + &quot;-dhcpClientNameSnooped&quot;;
+    public static final String CNT_DEVICE_ON_INTERAL_PORT_NOT_LEARNED = MODULE_NAME
+            + &quot;-deviceOnInternalPortNotLearned&quot;;
+    public static final String CNT_PACKET_NOT_ALLOWED = MODULE_NAME
+            + &quot;-packetNotAllowed&quot;;
+    public static final String CNT_NEW_DEVICE = MODULE_NAME + &quot;-newDevice&quot;;
+    public static final String CNT_PACKET_ON_INTERNAL_PORT_FOR_KNOWN_DEVICE = MODULE_NAME
+            + &quot;-packetOnInternalPortForKnownDevice&quot;;
+    public static final String CNT_NEW_ENTITY = MODULE_NAME + &quot;-newEntity&quot;;
+    public static final String CNT_DEVICE_CHANGED = MODULE_NAME
+            + &quot;-deviceChanged&quot;;
+    public static final String CNT_DEVICE_MOVED = MODULE_NAME + &quot;-deviceMoved&quot;;
+    public static final String CNT_CLEANUP_ENTITIES_RUNS = MODULE_NAME
+            + &quot;-cleanupEntitiesRuns&quot;;
+    public static final String CNT_ENTITY_REMOVED_TIMEOUT = MODULE_NAME
+            + &quot;-entityRemovedTimeout&quot;;
+    public static final String CNT_DEVICE_DELETED = MODULE_NAME
+            + &quot;-deviceDeleted&quot;;
+    public static final String CNT_DEVICE_RECLASSIFY_DELETE = MODULE_NAME
+            + &quot;-deviceReclassifyDelete&quot;;
+    public static final String CNT_DEVICE_STORED = MODULE_NAME
+            + &quot;-deviceStored&quot;;
+    public static final String CNT_DEVICE_STORE_THROTTLED = MODULE_NAME
+            + &quot;-deviceStoreThrottled&quot;;
+    public static final String CNT_DEVICE_REMOVED_FROM_STORE = MODULE_NAME
+            + &quot;-deviceRemovedFromStore&quot;;
+    public static final String CNT_SYNC_EXCEPTION = MODULE_NAME
+            + &quot;-syncException&quot;;
+    public static final String CNT_DEVICES_FROM_STORE = MODULE_NAME
+            + &quot;-devicesFromStore&quot;;
+    public static final String CNT_CONSOLIDATE_STORE_RUNS = MODULE_NAME
+            + &quot;-consolidateStoreRuns&quot;;
+    public static final String CNT_CONSOLIDATE_STORE_DEVICES_REMOVED = MODULE_NAME
+            + &quot;-consolidateStoreDevicesRemoved&quot;;
+
+<span class="nc" id="L181">    static final String DEVICE_SYNC_STORE_NAME = DeviceManagerImpl.class</span>
+<span class="nc" id="L182">            .getCanonicalName() + &quot;.stateStore&quot;;</span>
+
+    /**
+     * Time interval between writes of entries for the same device to the sync
+     * store.
+     */
+    // static final int DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS =
+    // 5*60*1000; // 5 min
+    // private int syncStoreWriteIntervalMs =
+    // DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS;
+
+    /**
+     * Time after SLAVE-&gt;MASTER until we run the consolidate store code.
+     */
+    // static final int DEFAULT_INITIAL_SYNC_STORE_CONSOLIDATE_MS =
+    // 15*1000; // 15 sec
+    // private int initialSyncStoreConsolidateMs =
+    // DEFAULT_INITIAL_SYNC_STORE_CONSOLIDATE_MS;
+
+    /**
+     * Time interval between consolidate store runs.
+     */
+    // static final int DEFAULT_SYNC_STORE_CONSOLIDATE_INTERVAL_MS =
+    // 75*60*1000; // 75 min
+    // private final int syncStoreConsolidateIntervalMs =
+    // DEFAULT_SYNC_STORE_CONSOLIDATE_INTERVAL_MS;
+
+    /**
+     * Time in milliseconds before entities will expire
+     */
+    protected static final int ENTITY_TIMEOUT = 60 * 60 * 1000;
+
+    /**
+     * Time in seconds between cleaning up old entities/devices
+     */
+<span class="nc" id="L217">    protected static final int ENTITY_CLEANUP_INTERVAL = 60 * 60;</span>
+
+    /**
+     * This is the master device map that maps device IDs to {@link Device}
+     * objects.
+     */
+    protected ConcurrentHashMap&lt;Long, Device&gt; deviceMap;
+
+    /**
+     * Counter used to generate device keys
+     */
+<span class="nc" id="L228">    protected long deviceKeyCounter = 0;</span>
+
+    /**
+     * Lock for incrementing the device key counter
+     */
+<span class="nc" id="L233">    protected Object deviceKeyLock = new Object();</span>
+
+    /**
+     * This is the primary entity index that contains all entities
+     */
+    protected DeviceUniqueIndex primaryIndex;
+
+    /**
+     * This stores secondary indices over the fields in the devices
+     */
+    protected Map&lt;EnumSet&lt;DeviceField&gt;, DeviceIndex&gt; secondaryIndexMap;
+
+    /**
+     * This map contains state for each of the {@ref IEntityClass} that exist
+     */
+    protected ConcurrentHashMap&lt;String, ClassState&gt; classStateMap;
+
+    /**
+     * This is the list of indices we want on a per-class basis
+     */
+    protected Set&lt;EnumSet&lt;DeviceField&gt;&gt; perClassIndices;
+
+    /**
+     * The entity classifier currently in use
+     */
+    protected IEntityClassifierService entityClassifier;
+
+    /**
+     * Used to cache state about specific entity classes
+     */
+    protected class ClassState {
+
+        /**
+         * The class index
+         */
+        protected DeviceUniqueIndex classIndex;
+
+        /**
+         * This stores secondary indices over the fields in the device for the
+         * class
+         */
+        protected Map&lt;EnumSet&lt;DeviceField&gt;, DeviceIndex&gt; secondaryIndexMap;
+
+        /**
+         * Allocate a new {@link ClassState} object for the class
+         *
+         * @param clazz
+         *            the class to use for the state
+         */
+<span class="nc" id="L282">        public ClassState(IEntityClass clazz) {</span>
+<span class="nc" id="L283">            EnumSet&lt;DeviceField&gt; keyFields = clazz.getKeyFields();</span>
+<span class="nc" id="L284">            EnumSet&lt;DeviceField&gt; primaryKeyFields = entityClassifier</span>
+<span class="nc" id="L285">                    .getKeyFields();</span>
+<span class="nc" id="L286">            boolean keyFieldsMatchPrimary = primaryKeyFields.equals(keyFields);</span>
+
+<span class="nc bnc" id="L288" title="All 2 branches missed.">            if (!keyFieldsMatchPrimary)</span>
+<span class="nc" id="L289">                classIndex = new DeviceUniqueIndex(keyFields);</span>
+
+<span class="nc" id="L291">            secondaryIndexMap = new HashMap&lt;EnumSet&lt;DeviceField&gt;, DeviceIndex&gt;();</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">            for (EnumSet&lt;DeviceField&gt; fields : perClassIndices) {</span>
+<span class="nc" id="L293">                secondaryIndexMap.put(fields, new DeviceMultiIndex(fields));</span>
+            }
+<span class="nc" id="L295">        }</span>
+    }
+
+    /**
+     * Device manager event listeners reclassifyDeviceListeners are notified
+     * first before reconcileDeviceListeners. This is to make sure devices are
+     * correctly reclassified before reconciliation.
+     */
+    protected ListenerDispatcher&lt;String, IDeviceListener&gt; deviceListeners;
+
+    /**
+     * Using the IfNewHostNotify to notify listeners of host changes.
+     */
+<span class="nc" id="L308">    private Set&lt;IfNewHostNotify&gt; newHostNotify = Collections.synchronizedSet(new HashSet&lt;IfNewHostNotify&gt;());</span>
+    /**
+     * A device update event to be dispatched
+     */
+    protected static class DeviceUpdate {
+<span class="nc" id="L313">        public enum Change {</span>
+<span class="nc" id="L314">            ADD, DELETE, CHANGE;</span>
+        }
+
+        /**
+         * The affected device
+         */
+        protected Device device;
+
+        /**
+         * The change that was made
+         */
+        protected Change change;
+
+        /**
+         * If not added, then this is the list of fields changed
+         */
+        protected EnumSet&lt;DeviceField&gt; fieldsChanged;
+
+        public DeviceUpdate(Device device, Change change,
+                EnumSet&lt;DeviceField&gt; fieldsChanged) {
+<span class="nc" id="L334">            super();</span>
+<span class="nc" id="L335">            this.device = device;</span>
+<span class="nc" id="L336">            this.change = change;</span>
+<span class="nc" id="L337">            this.fieldsChanged = fieldsChanged;</span>
+<span class="nc" id="L338">        }</span>
+
+        @Override
+        public String toString() {
+<span class="nc" id="L342">            String devIdStr = device.getEntityClass().getName() + &quot;::&quot;</span>
+<span class="nc" id="L343">                    + device.getMACAddressString();</span>
+<span class="nc" id="L344">            return &quot;DeviceUpdate [device=&quot; + devIdStr + &quot;, change=&quot; + change</span>
+<span class="nc" id="L345">                    + &quot;, fieldsChanged=&quot; + fieldsChanged + &quot;]&quot;;</span>
+        }
+
+    }
+
+    /**
+     * AttachmentPointComparator
+     *
+     * Compares two attachment points and returns the latest one. It is assumed
+     * that the two attachment points are in the same L2 domain.
+     *
+     * @author srini
+     */
+    protected class AttachmentPointComparator implements
+            Comparator&lt;AttachmentPoint&gt; {
+<span class="nc" id="L360">        public AttachmentPointComparator() {</span>
+<span class="nc" id="L361">            super();</span>
+<span class="nc" id="L362">        }</span>
+
+        @Override
+        public int compare(AttachmentPoint oldAP, AttachmentPoint newAP) {
+            // First compare based on L2 domain ID;
+
+            // XXX - missing functionality -- need topology
+            // long oldDomain = topology.getL2DomainId(oldSw);
+            // boolean oldBD = topology.isBroadcastDomainPort(oldSw, oldPort);
+<span class="nc" id="L371">            long oldDomain = 0;</span>
+<span class="nc" id="L372">            boolean oldBD = false;</span>
+
+            // XXX - missing functionality -- need topology
+            // long newDomain = topology.getL2DomainId(newSw);
+            // boolean newBD = topology.isBroadcastDomainPort(newSw, newPort);
+<span class="nc" id="L377">            long newDomain = 0;</span>
+<span class="nc" id="L378">            boolean newBD = false;</span>
+
+<span class="nc bnc" id="L380" title="All 2 branches missed.">            if (oldDomain &lt; newDomain)</span>
+<span class="nc" id="L381">                return -1;</span>
+<span class="nc bnc" id="L382" title="All 2 branches missed.">            else if (oldDomain &gt; newDomain)</span>
+<span class="nc" id="L383">                return 1;</span>
+
+            // Give preference to OFPP_LOCAL always
+<span class="nc bnc" id="L386" title="All 2 branches missed.">            if (!oldAP.getPort().getType().equals(NodeConnectorIDType.SWSTACK)</span>
+<span class="nc" id="L387">                    &amp;&amp; newAP.getPort().getType()</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">                            .equals(NodeConnectorIDType.SWSTACK)) {</span>
+<span class="nc" id="L389">                return -1;</span>
+<span class="nc" id="L390">            } else if (oldAP.getPort().getType()</span>
+<span class="nc bnc" id="L391" title="All 2 branches missed.">                    .equals(NodeConnectorIDType.SWSTACK)</span>
+<span class="nc" id="L392">                    &amp;&amp; !newAP.getPort().getType()</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">                            .equals(NodeConnectorIDType.SWSTACK)) {</span>
+<span class="nc" id="L394">                return 1;</span>
+            }
+
+            // We expect that the last seen of the new AP is higher than
+            // old AP, if it is not, just reverse and send the negative
+            // of the result.
+<span class="nc bnc" id="L400" title="All 2 branches missed.">            if (oldAP.getActiveSince() &gt; newAP.getActiveSince())</span>
+<span class="nc" id="L401">                return -compare(newAP, oldAP);</span>
+
+<span class="nc" id="L403">            long activeOffset = 0;</span>
+            // XXX - missing functionality -- need topology
+            // if (!topology.isConsistent(oldSw, oldPort, newSw, newPort)) {
+<span class="nc bnc" id="L406" title="All 4 branches missed.">            if (!newBD &amp;&amp; oldBD) {</span>
+<span class="nc" id="L407">                return -1;</span>
+            }
+<span class="nc bnc" id="L409" title="All 4 branches missed.">            if (newBD &amp;&amp; oldBD) {</span>
+<span class="nc" id="L410">                activeOffset = AttachmentPoint.EXTERNAL_TO_EXTERNAL_TIMEOUT;</span>
+<span class="nc bnc" id="L411" title="All 4 branches missed.">            } else if (newBD &amp;&amp; !oldBD) {</span>
+<span class="nc" id="L412">                activeOffset = AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT;</span>
+            }
+
+            // } else {
+            // // The attachment point is consistent.
+            // activeOffset = AttachmentPoint.CONSISTENT_TIMEOUT;
+            // }
+
+<span class="nc bnc" id="L420" title="All 2 branches missed.">            if ((newAP.getActiveSince() &gt; oldAP.getLastSeen() + activeOffset)</span>
+<span class="nc" id="L421">                    || (newAP.getLastSeen() &gt; oldAP.getLastSeen()</span>
+<span class="nc bnc" id="L422" title="All 2 branches missed.">                            + AttachmentPoint.INACTIVITY_INTERVAL)) {</span>
+<span class="nc" id="L423">                return -1;</span>
+            }
+<span class="nc" id="L425">            return 1;</span>
+        }
+    }
+
+    /**
+     * Comparator for sorting by cluster ID
+     */
+    public AttachmentPointComparator apComparator;
+
+    /**
+     * Switch ports where attachment points shouldn't be learned
+     */
+    private Set&lt;SwitchPort&gt; suppressAPs;
+
+    /**
+     * Periodic task to clean up expired entities
+     */
+    public SingletonTask entityCleanupTask;
+
+    // ********************
+    // Dependency injection
+    // ********************
+
+    void setNewHostNotify(IfNewHostNotify obj){
+<span class="nc" id="L449">        this.newHostNotify.add(obj);</span>
+<span class="nc" id="L450">    }</span>
+
+    void unsetNewHostNotify(IfNewHostNotify obj){
+<span class="nc" id="L453">        this.newHostNotify.remove(obj);</span>
+<span class="nc" id="L454">    }</span>
+
+    void setDataPacketService(IDataPacketService s) {
+<span class="nc" id="L457">        this.dataPacketService = s;</span>
+<span class="nc" id="L458">    }</span>
+
+    void unsetDataPacketService(IDataPacketService s) {
+<span class="nc bnc" id="L461" title="All 2 branches missed.">        if (this.dataPacketService == s) {</span>
+<span class="nc" id="L462">            this.dataPacketService = null;</span>
+        }
+<span class="nc" id="L464">    }</span>
+
+    public void setTopologyManager(ITopologyManager s) {
+<span class="nc" id="L467">        this.topology = s;</span>
+<span class="nc" id="L468">    }</span>
+
+    public void unsetTopologyManager(ITopologyManager s) {
+<span class="nc bnc" id="L471" title="All 2 branches missed.">        if (this.topology == s) {</span>
+<span class="nc" id="L472">            logger.debug(&quot;Topology Manager Service removed!&quot;);</span>
+<span class="nc" id="L473">            this.topology = null;</span>
+        }
+<span class="nc" id="L475">    }</span>
+
+<span class="nc" id="L477">    private volatile boolean stopped = true;</span>
+    private ScheduledExecutorService ses;
+
+    public void stop() {
+<span class="nc" id="L481">        stopped = true;</span>
+<span class="nc bnc" id="L482" title="All 2 branches missed.">        if (ses != null)</span>
+<span class="nc" id="L483">            ses.shutdownNow();</span>
+<span class="nc" id="L484">    }</span>
+
+    public void start() {
+<span class="nc" id="L487">        this.perClassIndices = new HashSet&lt;EnumSet&lt;DeviceField&gt;&gt;();</span>
+
+        // XXX - TODO need to make it possible to register a non-default
+        // classifier
+<span class="nc" id="L491">        entityClassifier = new DefaultEntityClassifier();</span>
+<span class="nc" id="L492">        this.deviceListeners = new ListenerDispatcher&lt;String, IDeviceListener&gt;();</span>
+<span class="nc" id="L493">        this.suppressAPs = Collections</span>
+<span class="nc" id="L494">                .newSetFromMap(new ConcurrentHashMap&lt;SwitchPort, Boolean&gt;());</span>
+<span class="nc" id="L495">        primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());</span>
+<span class="nc" id="L496">        secondaryIndexMap = new HashMap&lt;EnumSet&lt;DeviceField&gt;, DeviceIndex&gt;();</span>
+
+<span class="nc" id="L498">        deviceMap = new ConcurrentHashMap&lt;Long, Device&gt;();</span>
+<span class="nc" id="L499">        classStateMap = new ConcurrentHashMap&lt;String, ClassState&gt;();</span>
+<span class="nc" id="L500">        apComparator = new AttachmentPointComparator();</span>
+
+<span class="nc" id="L502">        addIndex(true, EnumSet.of(DeviceField.IPV4));</span>
+
+        // floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        // floodlightProvider.addHAListener(this.haListenerDelegate);
+        // if (topology != null)
+        // topology.addListener(this);
+        // flowReconcileMgr.addFlowReconcileListener(this);
+        // entityClassifier.addListener(this);
+
+<span class="nc" id="L511">        stopped = false;</span>
+        // XXX - Should use a common threadpool but this doesn't currently exist
+<span class="nc" id="L513">        ses = Executors.newScheduledThreadPool(1);</span>
+<span class="nc" id="L514">        Runnable ecr = new Runnable() {</span>
+            @Override
+            public void run() {
+<span class="nc" id="L517">                cleanupEntities();</span>
+<span class="nc bnc" id="L518" title="All 2 branches missed.">                if (!stopped)</span>
+<span class="nc" id="L519">                    entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,</span>
+<span class="nc" id="L520">                            TimeUnit.SECONDS);</span>
+<span class="nc" id="L521">            }</span>
+        };
+<span class="nc" id="L523">        entityCleanupTask = new SingletonTask(ses, ecr);</span>
+<span class="nc" id="L524">        entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL, TimeUnit.SECONDS);</span>
+
+        /*
+         * XXX Missing functionality if (restApi != null) {
+         * restApi.addRestletRoutable(new DeviceRoutable()); } else {
+         * logger.debug(&quot;Could not instantiate REST API&quot;); }
+         */
+
+<span class="nc" id="L532">        registerDeviceManagerDebugCounters();</span>
+
+        /*
+         * XXX Missing functionality try {
+         * this.syncService.registerStore(DEVICE_SYNC_STORE_NAME, Scope.LOCAL);
+         * this.storeClient = this.syncService
+         * .getStoreClient(DEVICE_SYNC_STORE_NAME, String.class,
+         * DeviceSyncRepresentation.class); } catch (SyncException e) { throw
+         * new FloodlightModuleException(&quot;Error while setting up sync service&quot;,
+         * e); }
+         *
+         * Runnable consolidateStoreRunner = new Runnable() {
+         *
+         * @Override public void run() { deviceSyncManager.consolidateStore();
+         * storeConsolidateTask.reschedule(syncStoreConsolidateIntervalMs,
+         * TimeUnit.MILLISECONDS); debugCounters.flushCounters(); } };
+         * storeConsolidateTask = new SingletonTask(ses,
+         * consolidateStoreRunner); if (isMaster)
+         * storeConsolidateTask.reschedule(syncStoreConsolidateIntervalMs,
+         * TimeUnit.MILLISECONDS);
+         */
+<span class="nc" id="L553">    }</span>
+
+    /**
+     * Periodic task to consolidate entries in the store. I.e., delete entries
+     * in the store that are not known to DeviceManager
+     */
+    // XXX - Missing functionality
+    // private SingletonTask storeConsolidateTask;
+
+    // *********************
+    // IDeviceManagerService
+    // *********************
+
+    void setSwitchManager(ISwitchManager s) {
+<span class="nc" id="L567">        logger.debug(&quot;SwitchManager set&quot;);</span>
+<span class="nc" id="L568">        this.switchManager = s;</span>
+<span class="nc" id="L569">    }</span>
+
+    void unsetSwitchManager(ISwitchManager s) {
+<span class="nc bnc" id="L572" title="All 2 branches missed.">        if (this.switchManager == s) {</span>
+<span class="nc" id="L573">            logger.debug(&quot;SwitchManager removed!&quot;);</span>
+<span class="nc" id="L574">            this.switchManager = null;</span>
+        }
+<span class="nc" id="L576">    }</span>
+
+    @Override
+    public IDevice getDevice(Long deviceKey) {
+<span class="nc" id="L580">        return deviceMap.get(deviceKey);</span>
+    }
+
+    @Override
+    public IDevice findDevice(long macAddress, Short vlan, Integer ipv4Address,
+            NodeConnector port) throws IllegalArgumentException {
+<span class="nc bnc" id="L586" title="All 4 branches missed.">        if (vlan != null &amp;&amp; vlan.shortValue() &lt;= 0)</span>
+<span class="nc" id="L587">            vlan = null;</span>
+<span class="nc bnc" id="L588" title="All 4 branches missed.">        if (ipv4Address != null &amp;&amp; ipv4Address == 0)</span>
+<span class="nc" id="L589">            ipv4Address = null;</span>
+<span class="nc" id="L590">        Entity e = new Entity(macAddress, vlan, ipv4Address, port, null);</span>
+<span class="nc bnc" id="L591" title="All 2 branches missed.">        if (!allKeyFieldsPresent(e, entityClassifier.getKeyFields())) {</span>
+<span class="nc" id="L592">            throw new IllegalArgumentException(&quot;Not all key fields specified.&quot;</span>
+<span class="nc" id="L593">                    + &quot; Required fields: &quot; + entityClassifier.getKeyFields());</span>
+        }
+<span class="nc" id="L595">        return findDeviceByEntity(e);</span>
+    }
+
+    @Override
+    public IDevice findClassDevice(IEntityClass entityClass, long macAddress,
+            Short vlan, Integer ipv4Address) throws IllegalArgumentException {
+<span class="nc bnc" id="L601" title="All 4 branches missed.">        if (vlan != null &amp;&amp; vlan.shortValue() &lt;= 0)</span>
+<span class="nc" id="L602">            vlan = null;</span>
+<span class="nc bnc" id="L603" title="All 4 branches missed.">        if (ipv4Address != null &amp;&amp; ipv4Address == 0)</span>
+<span class="nc" id="L604">            ipv4Address = null;</span>
+<span class="nc" id="L605">        Entity e = new Entity(macAddress, vlan, ipv4Address, null, null);</span>
+<span class="nc bnc" id="L606" title="All 2 branches missed.">        if (entityClass == null</span>
+<span class="nc bnc" id="L607" title="All 2 branches missed.">                || !allKeyFieldsPresent(e, entityClass.getKeyFields())) {</span>
+<span class="nc" id="L608">            throw new IllegalArgumentException(&quot;Not all key fields and/or &quot;</span>
+                    + &quot; no source device specified. Required fields: &quot;
+<span class="nc" id="L610">                    + entityClassifier.getKeyFields());</span>
+        }
+<span class="nc" id="L612">        return findDestByEntity(entityClass, e);</span>
+    }
+
+    @Override
+    public Collection&lt;? extends IDevice&gt; getAllDevices() {
+<span class="nc" id="L617">        return Collections.unmodifiableCollection(deviceMap.values());</span>
+    }
+
+    @Override
+    public void addIndex(boolean perClass, EnumSet&lt;DeviceField&gt; keyFields) {
+<span class="nc bnc" id="L622" title="All 2 branches missed.">        if (perClass) {</span>
+<span class="nc" id="L623">            perClassIndices.add(keyFields);</span>
+<span class="nc" id="L624">        } else {</span>
+<span class="nc" id="L625">            secondaryIndexMap.put(keyFields, new DeviceMultiIndex(keyFields));</span>
+        }
+<span class="nc" id="L627">    }</span>
+
+    @Override
+    public Iterator&lt;? extends IDevice&gt; queryDevices(Long macAddress,
+            Short vlan, Integer ipv4Address, NodeConnector port) {
+<span class="nc" id="L632">        DeviceIndex index = null;</span>
+<span class="nc bnc" id="L633" title="All 2 branches missed.">        if (secondaryIndexMap.size() &gt; 0) {</span>
+<span class="nc" id="L634">            EnumSet&lt;DeviceField&gt; keys = getEntityKeys(macAddress, vlan,</span>
+<span class="nc" id="L635">                    ipv4Address, port);</span>
+<span class="nc" id="L636">            index = secondaryIndexMap.get(keys);</span>
+        }
+
+<span class="nc" id="L639">        Iterator&lt;Device&gt; deviceIterator = null;</span>
+<span class="nc bnc" id="L640" title="All 2 branches missed.">        if (index == null) {</span>
+            // Do a full table scan
+<span class="nc" id="L642">            deviceIterator = deviceMap.values().iterator();</span>
+<span class="nc" id="L643">        } else {</span>
+            // index lookup
+<span class="nc bnc" id="L645" title="All 2 branches missed.">            Entity entity = new Entity((macAddress == null ? 0 : macAddress),</span>
+<span class="nc" id="L646">                    vlan, ipv4Address, port, null);</span>
+<span class="nc" id="L647">            deviceIterator = new DeviceIndexInterator(this,</span>
+<span class="nc" id="L648">                    index.queryByEntity(entity));</span>
+        }
+
+<span class="nc" id="L651">        DeviceIterator di = new DeviceIterator(deviceIterator, null,</span>
+<span class="nc" id="L652">                macAddress, vlan, ipv4Address, port);</span>
+<span class="nc" id="L653">        return di;</span>
+    }
+
+    @Override
+    public Iterator&lt;? extends IDevice&gt; queryClassDevices(
+            IEntityClass entityClass, Long macAddress, Short vlan,
+            Integer ipv4Address, NodeConnector port) {
+<span class="nc" id="L660">        ArrayList&lt;Iterator&lt;Device&gt;&gt; iterators = new ArrayList&lt;Iterator&lt;Device&gt;&gt;();</span>
+<span class="nc" id="L661">        ClassState classState = getClassState(entityClass);</span>
+
+<span class="nc" id="L663">        DeviceIndex index = null;</span>
+<span class="nc bnc" id="L664" title="All 2 branches missed.">        if (classState.secondaryIndexMap.size() &gt; 0) {</span>
+<span class="nc" id="L665">            EnumSet&lt;DeviceField&gt; keys = getEntityKeys(macAddress, vlan,</span>
+<span class="nc" id="L666">                    ipv4Address, port);</span>
+<span class="nc" id="L667">            index = classState.secondaryIndexMap.get(keys);</span>
+        }
+
+        Iterator&lt;Device&gt; iter;
+<span class="nc bnc" id="L671" title="All 2 branches missed.">        if (index == null) {</span>
+<span class="nc" id="L672">            index = classState.classIndex;</span>
+<span class="nc bnc" id="L673" title="All 2 branches missed.">            if (index == null) {</span>
+                // scan all devices
+<span class="nc" id="L675">                return new DeviceIterator(deviceMap.values().iterator(),</span>
+<span class="nc" id="L676">                        new IEntityClass[] { entityClass }, macAddress, vlan,</span>
+<span class="nc" id="L677">                        ipv4Address, port);</span>
+            } else {
+                // scan the entire class
+<span class="nc" id="L680">                iter = new DeviceIndexInterator(this, index.getAll());</span>
+            }
+<span class="nc" id="L682">        } else {</span>
+            // index lookup
+<span class="nc bnc" id="L684" title="All 2 branches missed.">            Entity entity = new Entity((macAddress == null ? 0 : macAddress),</span>
+<span class="nc" id="L685">                    vlan, ipv4Address, port, null);</span>
+<span class="nc" id="L686">            iter = new DeviceIndexInterator(this, index.queryByEntity(entity));</span>
+        }
+<span class="nc" id="L688">        iterators.add(iter);</span>
+
+<span class="nc" id="L690">        return new MultiIterator&lt;Device&gt;(iterators.iterator());</span>
+    }
+
+    protected Iterator&lt;Device&gt; getDeviceIteratorForQuery(Long macAddress,
+            Short vlan, Integer ipv4Address, NodeConnector port) {
+<span class="nc" id="L695">        DeviceIndex index = null;</span>
+<span class="nc bnc" id="L696" title="All 2 branches missed.">        if (secondaryIndexMap.size() &gt; 0) {</span>
+<span class="nc" id="L697">            EnumSet&lt;DeviceField&gt; keys = getEntityKeys(macAddress, vlan,</span>
+<span class="nc" id="L698">                    ipv4Address, port);</span>
+<span class="nc" id="L699">            index = secondaryIndexMap.get(keys);</span>
+        }
+
+<span class="nc" id="L702">        Iterator&lt;Device&gt; deviceIterator = null;</span>
+<span class="nc bnc" id="L703" title="All 2 branches missed.">        if (index == null) {</span>
+            // Do a full table scan
+<span class="nc" id="L705">            deviceIterator = deviceMap.values().iterator();</span>
+<span class="nc" id="L706">        } else {</span>
+            // index lookup
+<span class="nc bnc" id="L708" title="All 2 branches missed.">            Entity entity = new Entity((macAddress == null ? 0 : macAddress),</span>
+<span class="nc" id="L709">                    vlan, ipv4Address, port, null);</span>
+<span class="nc" id="L710">            deviceIterator = new DeviceIndexInterator(this,</span>
+<span class="nc" id="L711">                    index.queryByEntity(entity));</span>
+        }
+
+<span class="nc" id="L714">        DeviceIterator di = new DeviceIterator(deviceIterator, null,</span>
+<span class="nc" id="L715">                macAddress, vlan, ipv4Address, port);</span>
+<span class="nc" id="L716">        return di;</span>
+    }
+
+    @Override
+    public void addListener(IDeviceListener listener) {
+<span class="nc" id="L721">        deviceListeners.addListener(&quot;device&quot;, listener);</span>
+<span class="nc" id="L722">        logListeners();</span>
+<span class="nc" id="L723">    }</span>
+
+    @Override
+    public void addSuppressAPs(NodeConnector port) {
+<span class="nc" id="L727">        suppressAPs.add(new SwitchPort(port));</span>
+<span class="nc" id="L728">    }</span>
+
+    @Override
+    public void removeSuppressAPs(NodeConnector port) {
+<span class="nc" id="L732">        suppressAPs.remove(new SwitchPort(port));</span>
+<span class="nc" id="L733">    }</span>
+
+    @Override
+    public Set&lt;SwitchPort&gt; getSuppressAPs() {
+<span class="nc" id="L737">        return Collections.unmodifiableSet(suppressAPs);</span>
+    }
+
+    private void logListeners() {
+<span class="nc" id="L741">        List&lt;IDeviceListener&gt; listeners = deviceListeners.getOrderedListeners();</span>
+<span class="nc bnc" id="L742" title="All 2 branches missed.">        if (listeners != null) {</span>
+<span class="nc" id="L743">            StringBuffer sb = new StringBuffer();</span>
+<span class="nc" id="L744">            sb.append(&quot;DeviceListeners: &quot;);</span>
+<span class="nc bnc" id="L745" title="All 2 branches missed.">            for (IDeviceListener l : listeners) {</span>
+<span class="nc" id="L746">                sb.append(l.getName());</span>
+<span class="nc" id="L747">                sb.append(&quot;,&quot;);</span>
+            }
+<span class="nc" id="L749">            logger.debug(sb.toString());</span>
+        }
+<span class="nc" id="L751">    }</span>
+
+    // ***************
+    // IFlowReconcileListener
+    // ***************
+    /*
+     * XXX - Missing functionality
+     *
+     * @Override public Command reconcileFlows(ArrayList&lt;OFMatchReconcile&gt;
+     * ofmRcList) { ListIterator&lt;OFMatchReconcile&gt; iter =
+     * ofmRcList.listIterator(); while (iter.hasNext()) { OFMatchReconcile ofm =
+     * iter.next();
+     *
+     * // Remove the STOPPed flow. if (Command.STOP == reconcileFlow(ofm)) {
+     * iter.remove(); } }
+     *
+     * if (ofmRcList.size() &gt; 0) { return Command.CONTINUE; } else { return
+     * Command.STOP; } }
+     *
+     * protected Command reconcileFlow(OFMatchReconcile ofm) {
+     * debugCounters.updateCounter(CNT_RECONCILE_REQUEST); // Extract source
+     * entity information Entity srcEntity =
+     * getEntityFromFlowMod(ofm.ofmWithSwDpid, true); if (srcEntity == null) {
+     * debugCounters.updateCounter(CNT_RECONCILE_NO_SOURCE); return
+     * Command.STOP; }
+     *
+     * // Find the device by source entity Device srcDevice =
+     * findDeviceByEntity(srcEntity); if (srcDevice == null) {
+     * debugCounters.updateCounter(CNT_RECONCILE_NO_SOURCE); return
+     * Command.STOP; } // Store the source device in the context
+     * fcStore.put(ofm.cntx, CONTEXT_SRC_DEVICE, srcDevice);
+     *
+     * // Find the device matching the destination from the entity // classes of
+     * the source. Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid,
+     * false); Device dstDevice = null; if (dstEntity != null) { dstDevice =
+     * findDestByEntity(srcDevice.getEntityClass(), dstEntity); if (dstDevice !=
+     * null) fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice); else
+     * debugCounters.updateCounter(CNT_RECONCILE_NO_DEST); } else {
+     * debugCounters.updateCounter(CNT_RECONCILE_NO_DEST); } if
+     * (logger.isTraceEnabled()) {
+     * logger.trace(&quot;Reconciling flow: match={}, srcEntity={}, srcDev={}, &quot; +
+     * &quot;dstEntity={}, dstDev={}&quot;, new Object[] {ofm.ofmWithSwDpid.getOfMatch(),
+     * srcEntity, srcDevice, dstEntity, dstDevice } ); } return
+     * Command.CONTINUE; }
+     */
+
+    // *****************
+    // IListenDataPacket
+    // *****************
+
+    @Override
+    public PacketResult receiveDataPacket(RawPacket inPkt) {
+        // XXX - Can this really pass in null? Why would you ever want that?
+<span class="nc bnc" id="L804" title="All 2 branches missed.">        if (inPkt == null) {</span>
+<span class="nc" id="L805">            return PacketResult.IGNORED;</span>
+        }
+//        try {
+//            throw new Exception(&quot;Sample&quot;);
+//        } catch (Exception e) {
+//            logger.error(&quot;Sample stack trace&quot;, e);
+//        }
+
+<span class="nc" id="L813">        Packet formattedPak = this.dataPacketService.decodeDataPacket(inPkt);</span>
+        Ethernet eth;
+<span class="nc bnc" id="L815" title="All 2 branches missed.">        if (formattedPak instanceof Ethernet) {</span>
+<span class="nc" id="L816">            eth = (Ethernet) formattedPak;</span>
+<span class="nc" id="L817">        } else {</span>
+<span class="nc" id="L818">            return PacketResult.IGNORED;</span>
+        }
+
+        // Extract source entity information
+<span class="nc" id="L822">        NodeConnector inPort = inPkt.getIncomingNodeConnector();</span>
+<span class="nc" id="L823">        Entity srcEntity = getSourceEntityFromPacket(eth, inPort);</span>
+<span class="nc bnc" id="L824" title="All 2 branches missed.">        if (srcEntity == null) {</span>
+            // debugCounters.updateCounter(CNT_BROADCAST_SOURCE);
+<span class="nc" id="L826">            return PacketResult.CONSUME;</span>
+        }
+
+        // Learn from ARP packet for special VRRP settings.
+        // In VRRP settings, the source MAC address and sender MAC
+        // addresses can be different. In such cases, we need to learn
+        // the IP to MAC mapping of the VRRP IP address. The source
+        // entity will not have that information. Hence, a separate call
+        // to learn devices in such cases.
+<span class="nc" id="L835">        learnDeviceFromArpResponseData(eth, inPort);</span>
+
+        // Learn/lookup device information
+<span class="nc" id="L838">        Device srcDevice = learnDeviceByEntity(srcEntity);</span>
+<span class="nc bnc" id="L839" title="All 2 branches missed.">        if (srcDevice == null) {</span>
+            // debugCounters.updateCounter(CNT_NO_SOURCE);
+<span class="nc" id="L841">            return PacketResult.CONSUME;</span>
+        }
+<span class="nc" id="L843">        logger.trace(&quot;Saw packet from device {}&quot;, srcDevice);</span>
+
+        // // Store the source device in the context
+        // fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
+        //
+        // // Find the device matching the destination from the entity
+        // // classes of the source.
+        // Entity dstEntity = getDestEntityFromPacket(eth);
+        // Device dstDevice = null;
+        // if (dstEntity != null) {
+        // dstDevice =
+        // findDestByEntity(srcDevice.getEntityClass(), dstEntity);
+        // if (dstDevice != null)
+        // fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
+        // //else
+        // //debugCounters.updateCounter(CNT_NO_DEST);
+        // } else {
+        // //debugCounters.updateCounter(CNT_NO_DEST);
+        // }
+        //
+        // if (logger.isTraceEnabled()) {
+        // logger.trace(&quot;Received PI: {} on switch {}, port {} *** eth={}&quot; +
+        // &quot; *** srcDev={} *** dstDev={} *** &quot;,
+        // new Object[] { pi, sw.getStringId(), pi.getInPort(), eth,
+        // srcDevice, dstDevice });
+        // }
+        //
+        // snoopDHCPClientName(eth, srcDevice);
+
+<span class="nc" id="L872">        return PacketResult.KEEP_PROCESSING;</span>
+    }
+
+    // ****************
+    // Internal methods
+    // ****************
+
+    /**
+     * Snoop and record client-provided host name from DHCP requests
+     *
+     * @param eth
+     * @param srcDevice
+     */
+    // private void snoopDHCPClientName(Ethernet eth, Device srcDevice) {
+    // if (! (eth.getPayload() instanceof IPv4) )
+    // return;
+    // IPv4 ipv4 = (IPv4) eth.getPayload();
+    // if (! (ipv4.getPayload() instanceof UDP) )
+    // return;
+    // UDP udp = (UDP) ipv4.getPayload();
+    // if (!(udp.getPayload() instanceof DHCP))
+    // return;
+    // DHCP dhcp = (DHCP) udp.getPayload();
+    // byte opcode = dhcp.getOpCode();
+    // if (opcode == DHCP.OPCODE_REQUEST) {
+    // DHCPOption dhcpOption = dhcp.getOption(
+    // DHCPOptionCode.OptionCode_Hostname);
+    // if (dhcpOption != null) {
+    // debugCounters.updateCounter(CNT_DHCP_CLIENT_NAME_SNOOPED);
+    // srcDevice.dhcpClientName = new String(dhcpOption.getData());
+    // }
+    // }
+    // }
+
+    /**
+     * Check whether the given attachment point is valid given the current
+     * topology
+     *
+     * @param switchDPID
+     *            the DPID
+     * @param switchPort
+     *            the port
+     * @return true if it's a valid attachment point
+     */
+    public boolean isValidAttachmentPoint(NodeConnector port) {
+        // XXX - missing functionality -- need topology module
+        // if (topology.isAttachmentPointPort(port) == false)
+        // return false;
+<span class="nc bnc" id="L920" title="All 2 branches missed.">        if (topology.isInternal(port))</span>
+<span class="nc" id="L921">            return false;</span>
+<span class="nc bnc" id="L922" title="All 2 branches missed.">        if (!switchManager.isNodeConnectorEnabled(port))</span>
+<span class="nc" id="L923">            return false;</span>
+<span class="nc bnc" id="L924" title="All 2 branches missed.">        if (suppressAPs.contains(new SwitchPort(port)))</span>
+<span class="nc" id="L925">            return false;</span>
+
+<span class="nc" id="L927">        return true;</span>
+    }
+
+    /**
+     * Get sender IP address from packet if the packet is either an ARP packet.
+     *
+     * @param eth
+     * @param dlAddr
+     * @return
+     */
+    private int getSrcNwAddr(Ethernet eth, long dlAddr) {
+<span class="nc bnc" id="L938" title="All 2 branches missed.">        if (eth.getPayload() instanceof ARP) {</span>
+<span class="nc" id="L939">            ARP arp = (ARP) eth.getPayload();</span>
+<span class="nc bnc" id="L940" title="All 2 branches missed.">            if ((arp.getProtocolType() == ARP.PROTO_TYPE_IP)</span>
+<span class="nc bnc" id="L941" title="All 2 branches missed.">                    &amp;&amp; (toLong(arp.getSenderHardwareAddress()) == dlAddr)) {</span>
+<span class="nc" id="L942">                return toIPv4Address(arp.getSenderProtocolAddress());</span>
+            }
+        }
+<span class="nc" id="L945">        return 0;</span>
+    }
+
+    /**
+     * Parse an entity from an {@link Ethernet} packet.
+     *
+     * @param eth
+     *            the packet to parse
+     * @param sw
+     *            the switch on which the packet arrived
+     * @param pi
+     *            the original packetin
+     * @return the entity from the packet
+     */
+    protected Entity getSourceEntityFromPacket(Ethernet eth, NodeConnector port) {
+<span class="nc" id="L960">        byte[] dlAddrArr = eth.getSourceMACAddress();</span>
+<span class="nc" id="L961">        long dlAddr = toLong(dlAddrArr);</span>
+
+        // Ignore broadcast/multicast source
+<span class="nc bnc" id="L964" title="All 2 branches missed.">        if ((dlAddrArr[0] &amp; 0x1) != 0)</span>
+<span class="nc" id="L965">            return null;</span>
+
+        // XXX missing functionality
+        // short vlan = 0;
+<span class="nc" id="L969">        int nwSrc = getSrcNwAddr(eth, dlAddr);</span>
+<span class="nc bnc" id="L970" title="All 2 branches missed.">        return new Entity(dlAddr, null, ((nwSrc != 0) ? nwSrc : null), port,</span>
+<span class="nc" id="L971">                new Date());</span>
+    }
+
+    /**
+     * Learn device from ARP data in scenarios where the Ethernet source MAC is
+     * different from the sender hardware address in ARP data.
+     */
+    protected void learnDeviceFromArpResponseData(Ethernet eth,
+            NodeConnector port) {
+
+<span class="nc bnc" id="L981" title="All 2 branches missed.">        if (!(eth.getPayload() instanceof ARP))</span>
+<span class="nc" id="L982">            return;</span>
+<span class="nc" id="L983">        ARP arp = (ARP) eth.getPayload();</span>
+
+<span class="nc" id="L985">        byte[] dlAddrArr = eth.getSourceMACAddress();</span>
+<span class="nc" id="L986">        long dlAddr = toLong(dlAddrArr);</span>
+
+<span class="nc" id="L988">        byte[] senderHardwareAddr = arp.getSenderHardwareAddress();</span>
+<span class="nc" id="L989">        long senderAddr = toLong(senderHardwareAddr);</span>
+
+<span class="nc bnc" id="L991" title="All 2 branches missed.">        if (dlAddr == senderAddr)</span>
+<span class="nc" id="L992">            return;</span>
+
+        // Ignore broadcast/multicast source
+<span class="nc bnc" id="L995" title="All 2 branches missed.">        if ((senderHardwareAddr[0] &amp; 0x1) != 0)</span>
+<span class="nc" id="L996">            return;</span>
+
+        // short vlan = eth.getVlanID();
+<span class="nc" id="L999">        int nwSrc = toIPv4Address(arp.getSenderProtocolAddress());</span>
+
+<span class="nc bnc" id="L1001" title="All 2 branches missed.">        Entity e = new Entity(senderAddr, null, ((nwSrc != 0) ? nwSrc : null),</span>
+<span class="nc" id="L1002">                port, new Date());</span>
+
+<span class="nc" id="L1004">        learnDeviceByEntity(e);</span>
+<span class="nc" id="L1005">    }</span>
+
+    /**
+     * Get a (partial) entity for the destination from the packet.
+     *
+     * @param eth
+     * @return
+     */
+    // protected Entity getDestEntityFromPacket(Ethernet eth) {
+    // byte[] dlAddrArr = eth.getDestinationMACAddress();
+    // long dlAddr = Ethernet.toLong(dlAddrArr);
+    // short vlan = eth.getVlanID();
+    // int nwDst = 0;
+    //
+    // // Ignore broadcast/multicast destination
+    // if ((dlAddrArr[0] &amp; 0x1) != 0)
+    // return null;
+    //
+    // if (eth.getPayload() instanceof IPv4) {
+    // IPv4 ipv4 = (IPv4) eth.getPayload();
+    // nwDst = ipv4.getDestinationAddress();
+    // }
+    //
+    // return new Entity(dlAddr,
+    // ((vlan &gt;= 0) ? vlan : null),
+    // ((nwDst != 0) ? nwDst : null),
+    // null,
+    // null,
+    // null);
+    // }
+
+    /**
+     * Parse an entity from an OFMatchWithSwDpid.
+     *
+     * @param ofmWithSwDpid
+     * @return the entity from the packet
+     */
+    // private Entity getEntityFromFlowMod(OFMatchWithSwDpid ofmWithSwDpid,
+    // boolean isSource) {
+    // byte[] dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerSource();
+    // int nwSrc = ofmWithSwDpid.getOfMatch().getNetworkSource();
+    // if (!isSource) {
+    // dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerDestination();
+    // nwSrc = ofmWithSwDpid.getOfMatch().getNetworkDestination();
+    // }
+    //
+    // long dlAddr = Ethernet.toLong(dlAddrArr);
+    //
+    // // Ignore broadcast/multicast source
+    // if ((dlAddrArr[0] &amp; 0x1) != 0)
+    // return null;
+    //
+    // Long swDpid = null;
+    // Short inPort = null;
+    //
+    // if (isSource) {
+    // swDpid = ofmWithSwDpid.getSwitchDataPathId();
+    // inPort = ofmWithSwDpid.getOfMatch().getInputPort();
+    // }
+    //
+    // /**for the new flow cache design, the flow mods retrived are not always
+    // from the source, learn AP should be disabled --meiyang*/
+    // boolean learnap = false;
+    // /**
+    // * if (swDpid == null ||
+    // inPort == null ||
+    // !isValidAttachmentPoint(swDpid, inPort)) {
+    // // If this is an internal port or we otherwise don't want
+    // // to learn on these ports. In the future, we should
+    // // handle this case by labeling flows with something that
+    // // will give us the entity class. For now, we'll do our
+    // // best assuming attachment point information isn't used
+    // // as a key field.
+    // learnap = false;
+    // }
+    // */
+    //
+    // short vlan = ofmWithSwDpid.getOfMatch().getDataLayerVirtualLan();
+    // return new Entity(dlAddr,
+    // ((vlan &gt;= 0) ? vlan : null),
+    // ((nwSrc != 0) ? nwSrc : null),
+    // (learnap ? swDpid : null),
+    // (learnap ? (int)inPort : null),
+    // new Date());
+    // }
+
+    /**
+     * Look up a {@link Device} based on the provided {@link Entity}. We first
+     * check the primary index. If we do not find an entry there we classify the
+     * device into its IEntityClass and query the classIndex. This implies that
+     * all key field of the current IEntityClassifier must be present in the
+     * entity for the lookup to succeed!
+     *
+     * @param entity
+     *            the entity to search for
+     * @return The {@link Device} object if found
+     */
+    protected Device findDeviceByEntity(Entity entity) {
+        // Look up the fully-qualified entity to see if it already
+        // exists in the primary entity index.
+<span class="nc" id="L1105">        Long deviceKey = primaryIndex.findByEntity(entity);</span>
+<span class="nc" id="L1106">        IEntityClass entityClass = null;</span>
+
+<span class="nc bnc" id="L1108" title="All 2 branches missed.">        if (deviceKey == null) {</span>
+            // If the entity does not exist in the primary entity index,
+            // use the entity classifier for find the classes for the
+            // entity. Look up the entity in the returned class'
+            // class entity index.
+<span class="nc" id="L1113">            entityClass = entityClassifier.classifyEntity(entity);</span>
+<span class="nc bnc" id="L1114" title="All 2 branches missed.">            if (entityClass == null) {</span>
+<span class="nc" id="L1115">                return null;</span>
+            }
+<span class="nc" id="L1117">            ClassState classState = getClassState(entityClass);</span>
+
+<span class="nc bnc" id="L1119" title="All 2 branches missed.">            if (classState.classIndex != null) {</span>
+<span class="nc" id="L1120">                deviceKey = classState.classIndex.findByEntity(entity);</span>
+            }
+        }
+<span class="nc bnc" id="L1123" title="All 2 branches missed.">        if (deviceKey == null)</span>
+<span class="nc" id="L1124">            return null;</span>
+<span class="nc" id="L1125">        return deviceMap.get(deviceKey);</span>
+    }
+
+    /**
+     * Get a destination device using entity fields that corresponds with the
+     * given source device. The source device is important since there could be
+     * ambiguity in the destination device without the attachment point
+     * information.
+     *
+     * @param reference
+     *            the source device's entity class. The returned destination
+     *            will be in the same entity class as the source.
+     * @param dstEntity
+     *            the entity to look up
+     * @return an {@link Device} or null if no device is found.
+     */
+    protected Device findDestByEntity(IEntityClass reference, Entity dstEntity) {
+
+        // Look up the fully-qualified entity to see if it
+        // exists in the primary entity index
+<span class="nc" id="L1145">        Long deviceKey = primaryIndex.findByEntity(dstEntity);</span>
+
+<span class="nc bnc" id="L1147" title="All 2 branches missed.">        if (deviceKey == null) {</span>
+            // This could happen because:
+            // 1) no destination known, or a broadcast destination
+            // 2) if we have attachment point key fields since
+            // attachment point information isn't available for
+            // destination devices.
+            // For the second case, we'll need to match up the
+            // destination device with the class of the source
+            // device.
+<span class="nc" id="L1156">            ClassState classState = getClassState(reference);</span>
+<span class="nc bnc" id="L1157" title="All 2 branches missed.">            if (classState.classIndex == null) {</span>
+<span class="nc" id="L1158">                return null;</span>
+            }
+<span class="nc" id="L1160">            deviceKey = classState.classIndex.findByEntity(dstEntity);</span>
+        }
+<span class="nc bnc" id="L1162" title="All 2 branches missed.">        if (deviceKey == null)</span>
+<span class="nc" id="L1163">            return null;</span>
+<span class="nc" id="L1164">        return deviceMap.get(deviceKey);</span>
+    }
+
+    /**
+     * Look up a {@link Device} within a particular entity class based on the
+     * provided {@link Entity}.
+     *
+     * @param clazz
+     *            the entity class to search for the entity
+     * @param entity
+     *            the entity to search for
+     * @return The {@link Device} object if found private Device
+     *         findDeviceInClassByEntity(IEntityClass clazz, Entity entity) { //
+     *         XXX - TODO throw new UnsupportedOperationException(); }
+     */
+
+    /**
+     * Look up a {@link Device} based on the provided {@link Entity}. Also
+     * learns based on the new entity, and will update existing devices as
+     * required.
+     *
+     * @param entity
+     *            the {@link Entity}
+     * @return The {@link Device} object if found
+     */
+    protected Device learnDeviceByEntity(Entity entity) {
+<span class="nc" id="L1190">        logger.info(&quot;Primary index {}&quot;, primaryIndex);</span>
+<span class="nc" id="L1191">        ArrayList&lt;Long&gt; deleteQueue = null;</span>
+<span class="nc" id="L1192">        LinkedList&lt;DeviceUpdate&gt; deviceUpdates = null;</span>
+<span class="nc" id="L1193">        Device oldDevice = null;</span>
+<span class="nc" id="L1194">        Device device = null;</span>
+
+        // we may need to restart the learning process if we detect
+        // concurrent modification. Note that we ensure that at least
+        // one thread should always succeed so we don't get into infinite
+        // starvation loops
+        while (true) {
+<span class="nc" id="L1201">            deviceUpdates = null;</span>
+
+            // Look up the fully-qualified entity to see if it already
+            // exists in the primary entity index.
+<span class="nc" id="L1205">            Long deviceKey = primaryIndex.findByEntity(entity);</span>
+<span class="nc" id="L1206">            IEntityClass entityClass = null;</span>
+
+<span class="nc bnc" id="L1208" title="All 2 branches missed.">            if (deviceKey == null) {</span>
+                // If the entity does not exist in the primary entity index,
+                // use the entity classifier for find the classes for the
+                // entity. Look up the entity in the returned class'
+                // class entity index.
+<span class="nc" id="L1213">                entityClass = entityClassifier.classifyEntity(entity);</span>
+<span class="nc bnc" id="L1214" title="All 2 branches missed.">                if (entityClass == null) {</span>
+                    // could not classify entity. No device
+<span class="nc" id="L1216">                    device = null;</span>
+<span class="nc" id="L1217">                    break;</span>
+                }
+<span class="nc" id="L1219">                ClassState classState = getClassState(entityClass);</span>
+
+<span class="nc bnc" id="L1221" title="All 2 branches missed.">                if (classState.classIndex != null) {</span>
+<span class="nc" id="L1222">                    deviceKey = classState.classIndex.findByEntity(entity);</span>
+                }
+            }
+<span class="nc bnc" id="L1225" title="All 2 branches missed.">            if (deviceKey != null) {</span>
+                // If the primary or secondary index contains the entity
+                // use resulting device key to look up the device in the
+                // device map, and use the referenced Device below.
+<span class="nc" id="L1229">                device = deviceMap.get(deviceKey);</span>
+<span class="nc bnc" id="L1230" title="All 2 branches missed.">                if (device == null) {</span>
+                    // This can happen due to concurrent modification
+<span class="nc bnc" id="L1232" title="All 2 branches missed.">                    if (logger.isDebugEnabled()) {</span>
+<span class="nc" id="L1233">                        logger.debug(&quot;No device for deviceKey {} while &quot;</span>
+<span class="nc" id="L1234">                                + &quot;while processing entity {}&quot;, deviceKey,</span>
+<span class="nc" id="L1235">                                entity);</span>
+                    }
+                    // if so, then try again till we don't even get the device
+                    // key
+                    // and so we recreate the device
+<span class="nc" id="L1240">                    continue;</span>
+                }
+            } else {
+                // If the secondary index does not contain the entity,
+                // create a new Device object containing the entity, and
+                // generate a new device ID if the the entity is on an
+                // attachment point port. Otherwise ignore.
+<span class="nc bnc" id="L1247" title="All 2 branches missed.">                if (entity.hasSwitchPort()</span>
+<span class="nc bnc" id="L1248" title="All 2 branches missed.">                        &amp;&amp; !isValidAttachmentPoint(entity.getPort())) {</span>
+                    // debugCounters.updateCounter(CNT_DEVICE_ON_INTERAL_PORT_NOT_LEARNED);
+<span class="nc bnc" id="L1250" title="All 2 branches missed.">                    if (logger.isDebugEnabled()) {</span>
+<span class="nc" id="L1251">                        logger.debug(&quot;Not learning new device on internal&quot;</span>
+<span class="nc" id="L1252">                                + &quot; link: {}&quot;, entity);</span>
+                    }
+<span class="nc" id="L1254">                    device = null;</span>
+<span class="nc" id="L1255">                    break;</span>
+                }
+                // Before we create the new device also check if
+                // the entity is allowed (e.g., for spoofing protection)
+<span class="nc bnc" id="L1259" title="All 2 branches missed.">                if (!isEntityAllowed(entity, entityClass)) {</span>
+                    // debugCounters.updateCounter(CNT_PACKET_NOT_ALLOWED);
+<span class="nc bnc" id="L1261" title="All 2 branches missed.">                    if (logger.isDebugEnabled()) {</span>
+<span class="nc" id="L1262">                        logger.debug(&quot;PacketIn is not allowed {} {}&quot;,</span>
+<span class="nc" id="L1263">                                entityClass.getName(), entity);</span>
+                    }
+<span class="nc" id="L1265">                    device = null;</span>
+<span class="nc" id="L1266">                    break;</span>
+                }
+<span class="nc" id="L1268">                synchronized (deviceKeyLock) {</span>
+<span class="nc" id="L1269">                    deviceKey = Long.valueOf(deviceKeyCounter++);</span>
+                }
+<span class="nc" id="L1271">                device = allocateDevice(deviceKey, entity, entityClass);</span>
+
+                // Add the new device to the primary map with a simple put
+<span class="nc" id="L1274">                deviceMap.put(deviceKey, device);</span>
+
+                // update indices
+<span class="nc bnc" id="L1277" title="All 2 branches missed.">                if (!updateIndices(device, deviceKey)) {</span>
+<span class="nc bnc" id="L1278" title="All 2 branches missed.">                    if (deleteQueue == null)</span>
+<span class="nc" id="L1279">                        deleteQueue = new ArrayList&lt;Long&gt;();</span>
+<span class="nc" id="L1280">                    deleteQueue.add(deviceKey);</span>
+<span class="nc" id="L1281">                    continue;</span>
+                }
+
+<span class="nc" id="L1284">                updateSecondaryIndices(entity, entityClass, deviceKey);</span>
+
+                // We need to count and log here. If we log earlier we could
+                // hit a concurrent modification and restart the dev creation
+                // and potentially count the device twice.
+                // debugCounters.updateCounter(CNT_NEW_DEVICE);
+<span class="nc bnc" id="L1290" title="All 2 branches missed.">                if (logger.isDebugEnabled()) {</span>
+<span class="nc" id="L1291">                    logger.debug(</span>
+<span class="nc" id="L1292">                            &quot;New device created: {} deviceKey={}, entity={}&quot;,</span>
+<span class="nc" id="L1293">                            new Object[] { device, deviceKey, entity });</span>
+                }
+                // generate new device update
+<span class="nc" id="L1296">                deviceUpdates = updateUpdates(deviceUpdates, new DeviceUpdate(</span>
+<span class="nc" id="L1297">                        device, ADD, null));</span>
+
+<span class="nc" id="L1299">                break;</span>
+            }
+            // if it gets here, we have a pre-existing Device for this Entity
+<span class="nc bnc" id="L1302" title="All 2 branches missed.">            if (!isEntityAllowed(entity, device.getEntityClass())) {</span>
+                // debugCounters.updateCounter(CNT_PACKET_NOT_ALLOWED);
+<span class="nc bnc" id="L1304" title="All 2 branches missed.">                if (logger.isDebugEnabled()) {</span>
+<span class="nc" id="L1305">                    logger.info(&quot;PacketIn is not allowed {} {}&quot;, device</span>
+<span class="nc" id="L1306">                            .getEntityClass().getName(), entity);</span>
+                }
+<span class="nc" id="L1308">                return null;</span>
+            }
+            // If this is not an attachment point port we don't learn the new
+            // entity
+            // and don't update indexes. But we do allow the device to continue
+            // up
+            // the chain.
+<span class="nc bnc" id="L1315" title="All 2 branches missed.">            if (entity.hasSwitchPort()</span>
+<span class="nc bnc" id="L1316" title="All 2 branches missed.">                    &amp;&amp; !isValidAttachmentPoint(entity.getPort())) {</span>
+                // debugCounters.updateCounter(CNT_PACKET_ON_INTERNAL_PORT_FOR_KNOWN_DEVICE);
+<span class="nc" id="L1318">                break;</span>
+            }
+<span class="nc" id="L1320">            int entityindex = -1;</span>
+<span class="nc bnc" id="L1321" title="All 2 branches missed.">            if ((entityindex = device.entityIndex(entity)) &gt;= 0) {</span>
+                // Entity already exists
+                // update timestamp on the found entity
+<span class="nc" id="L1324">                Date lastSeen = entity.getLastSeenTimestamp();</span>
+<span class="nc bnc" id="L1325" title="All 2 branches missed.">                if (lastSeen == null) {</span>
+<span class="nc" id="L1326">                    lastSeen = new Date();</span>
+<span class="nc" id="L1327">                    entity.setLastSeenTimestamp(lastSeen);</span>
+                }
+<span class="nc" id="L1329">                device.entities[entityindex].setLastSeenTimestamp(lastSeen);</span>
+                // we break the loop after checking for changes to the AP
+<span class="nc" id="L1331">            } else {</span>
+                // New entity for this device
+                // compute the insertion point for the entity.
+                // see Arrays.binarySearch()
+<span class="nc" id="L1335">                entityindex = -(entityindex + 1);</span>
+<span class="nc" id="L1336">                Device newDevice = allocateDevice(device, entity, entityindex);</span>
+
+                // generate updates
+<span class="nc" id="L1339">                EnumSet&lt;DeviceField&gt; changedFields = findChangedFields(device,</span>
+<span class="nc" id="L1340">                        entity);</span>
+
+                // update the device map with a replace call
+<span class="nc" id="L1343">                boolean res = deviceMap.replace(deviceKey, device, newDevice);</span>
+                // If replace returns false, restart the process from the
+                // beginning (this implies another thread concurrently
+                // modified this Device).
+<span class="nc bnc" id="L1347" title="All 2 branches missed.">                if (!res)</span>
+<span class="nc" id="L1348">                    continue;</span>
+<span class="nc" id="L1349">                oldDevice = device;</span>
+<span class="nc" id="L1350">                device = newDevice;</span>
+                // update indices
+<span class="nc bnc" id="L1352" title="All 2 branches missed.">                if (!updateIndices(device, deviceKey)) {</span>
+<span class="nc" id="L1353">                    continue;</span>
+                }
+<span class="nc" id="L1355">                updateSecondaryIndices(entity, device.getEntityClass(),</span>
+<span class="nc" id="L1356">                        deviceKey);</span>
+
+                // We need to count here after all the possible &quot;continue&quot;
+                // statements in this branch
+                // debugCounters.updateCounter(CNT_NEW_ENTITY);
+<span class="nc bnc" id="L1361" title="All 2 branches missed.">                if (changedFields.size() &gt; 0) {</span>
+                    // debugCounters.updateCounter(CNT_DEVICE_CHANGED);
+<span class="nc" id="L1363">                    deviceUpdates = updateUpdates(deviceUpdates,</span>
+<span class="nc" id="L1364">                            new DeviceUpdate(newDevice, CHANGE, changedFields));</span>
+                }
+                // we break the loop after checking for changed AP
+            }
+            // Update attachment point (will only be hit if the device
+            // already existed and no concurrent modification)
+<span class="nc bnc" id="L1370" title="All 2 branches missed.">            if (entity.hasSwitchPort()) {</span>
+<span class="nc" id="L1371">                boolean moved = device.updateAttachmentPoint(entity.getPort(),</span>
+<span class="nc" id="L1372">                        entity.getLastSeenTimestamp().getTime());</span>
+                // TODO: use update mechanism instead of sending the
+                // notification directly
+<span class="nc bnc" id="L1375" title="All 2 branches missed.">                if (moved) {</span>
+                    // we count device moved events in
+                    // sendDeviceMovedNotification()
+<span class="nc" id="L1378">                    sendDeviceMovedNotification(device, oldDevice);</span>
+<span class="nc bnc" id="L1379" title="All 2 branches missed.">                    if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L1380">                        logger.trace(&quot;Device moved: attachment points {},&quot;</span>
+<span class="nc" id="L1381">                                + &quot;entities {}&quot;, device.attachmentPoints,</span>
+<span class="nc" id="L1382">                                device.entities);</span>
+                    }
+<span class="nc" id="L1384">                } else {</span>
+<span class="nc bnc" id="L1385" title="All 2 branches missed.">                    if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L1386">                        logger.trace(&quot;Device attachment point updated: &quot;</span>
+                                + &quot;attachment points {},&quot; + &quot;entities {}&quot;,
+<span class="nc" id="L1388">                                device.attachmentPoints, device.entities);</span>
+                    }
+                }
+            }
+            break;
+        }
+
+<span class="nc bnc" id="L1395" title="All 2 branches missed.">        if (deleteQueue != null) {</span>
+<span class="nc bnc" id="L1396" title="All 2 branches missed.">            for (Long l : deleteQueue) {</span>
+<span class="nc" id="L1397">                Device dev = deviceMap.get(l);</span>
+<span class="nc" id="L1398">                this.deleteDevice(dev);</span>
+            }
+        }
+
+<span class="nc" id="L1402">        processUpdates(deviceUpdates);</span>
+        // deviceSyncManager.storeDeviceThrottled(device);
+
+<span class="nc" id="L1405">        return device;</span>
+    }
+
+    protected boolean isEntityAllowed(Entity entity, IEntityClass entityClass) {
+<span class="nc" id="L1409">        return true;</span>
+    }
+
+    protected EnumSet&lt;DeviceField&gt; findChangedFields(Device device,
+            Entity newEntity) {
+<span class="nc" id="L1414">        EnumSet&lt;DeviceField&gt; changedFields = EnumSet.of(DeviceField.IPV4,</span>
+<span class="nc" id="L1415">                DeviceField.VLAN, DeviceField.SWITCHPORT);</span>
+
+<span class="nc bnc" id="L1417" title="All 2 branches missed.">        if (newEntity.getIpv4Address() == null)</span>
+<span class="nc" id="L1418">            changedFields.remove(DeviceField.IPV4);</span>
+<span class="nc bnc" id="L1419" title="All 2 branches missed.">        if (newEntity.getVlan() == null)</span>
+<span class="nc" id="L1420">            changedFields.remove(DeviceField.VLAN);</span>
+<span class="nc bnc" id="L1421" title="All 2 branches missed.">        if (newEntity.getPort() == null)</span>
+<span class="nc" id="L1422">            changedFields.remove(DeviceField.SWITCHPORT);</span>
+
+<span class="nc bnc" id="L1424" title="All 2 branches missed.">        if (changedFields.size() == 0)</span>
+<span class="nc" id="L1425">            return changedFields;</span>
+
+<span class="nc bnc" id="L1427" title="All 2 branches missed.">        for (Entity entity : device.getEntities()) {</span>
+<span class="nc bnc" id="L1428" title="All 2 branches missed.">            if (newEntity.getIpv4Address() == null</span>
+<span class="nc bnc" id="L1429" title="All 2 branches missed.">                    || (entity.getIpv4Address() != null &amp;&amp; entity</span>
+<span class="nc" id="L1430">                            .getIpv4Address()</span>
+<span class="nc bnc" id="L1431" title="All 2 branches missed.">                            .equals(newEntity.getIpv4Address())))</span>
+<span class="nc" id="L1432">                changedFields.remove(DeviceField.IPV4);</span>
+<span class="nc bnc" id="L1433" title="All 2 branches missed.">            if (newEntity.getVlan() == null</span>
+<span class="nc bnc" id="L1434" title="All 2 branches missed.">                    || (entity.getVlan() != null &amp;&amp; entity.getVlan().equals(</span>
+<span class="nc bnc" id="L1435" title="All 2 branches missed.">                            newEntity.getVlan())))</span>
+<span class="nc" id="L1436">                changedFields.remove(DeviceField.VLAN);</span>
+<span class="nc bnc" id="L1437" title="All 2 branches missed.">            if (newEntity.getPort() == null</span>
+<span class="nc bnc" id="L1438" title="All 2 branches missed.">                    || (entity.getPort() != null &amp;&amp; entity.getPort().equals(</span>
+<span class="nc bnc" id="L1439" title="All 2 branches missed.">                            newEntity.getPort())))</span>
+<span class="nc" id="L1440">                changedFields.remove(DeviceField.SWITCHPORT);</span>
+        }
+
+<span class="nc" id="L1443">        return changedFields;</span>
+    }
+
+    /**
+     * Send update notifications to listeners
+     *
+     * @param updates
+     *            the updates to process.
+     */
+    protected void processUpdates(Queue&lt;DeviceUpdate&gt; updates) {
+<span class="nc bnc" id="L1453" title="All 2 branches missed.">        if (updates == null)</span>
+<span class="nc" id="L1454">            return;</span>
+<span class="nc" id="L1455">        DeviceUpdate update = null;</span>
+<span class="nc bnc" id="L1456" title="All 2 branches missed.">        while (null != (update = updates.poll())) {</span>
+<span class="nc bnc" id="L1457" title="All 2 branches missed.">            if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L1458">                logger.trace(&quot;Dispatching device update: {}&quot;, update);</span>
+            }
+            // if (update.change == DeviceUpdate.Change.DELETE)
+            // deviceSyncManager.removeDevice(update.device);
+            // else
+            // deviceSyncManager.storeDevice(update.device);
+<span class="nc" id="L1464">            List&lt;IDeviceListener&gt; listeners = deviceListeners</span>
+<span class="nc" id="L1465">                    .getOrderedListeners();</span>
+<span class="nc" id="L1466">            notifyListeners(listeners, update);</span>
+        }
+<span class="nc" id="L1468">    }</span>
+
+    protected void notifyListeners(List&lt;IDeviceListener&gt; listeners,
+            DeviceUpdate update) {
+       // Topology update is for some reason outside of listeners registry
+       // logic
+<span class="nc" id="L1474">        Entity[] ents = update.device.getEntities();</span>
+<span class="nc" id="L1475">        Entity e = ents[ents.length-1];</span>
+<span class="nc" id="L1476">        NodeConnector p = e.getPort();</span>
+<span class="nc" id="L1477">        Node node = p.getNode();</span>
+<span class="nc" id="L1478">        Host h = null;</span>
+        try {
+<span class="nc" id="L1480">            byte[] mac = NetUtils.longToByteArray6(e.getMacAddress());</span>
+<span class="nc" id="L1481">            DataLinkAddress dla = new EthernetAddress(</span>
+<span class="nc" id="L1482">                    mac);</span>
+<span class="nc" id="L1483">            e.getIpv4Address();</span>
+<span class="nc" id="L1484">            InetAddress.getAllByName(e.getIpv4Address().toString());</span>
+<span class="nc" id="L1485">            h = new org.opendaylight.controller.sal.core.Host(dla,</span>
+<span class="nc" id="L1486">                    InetAddress.getByName(e.getIpv4Address().toString()));</span>
+<span class="nc" id="L1487">        } catch (ConstructionException ce) {</span>
+<span class="nc" id="L1488">            p = null;</span>
+<span class="nc" id="L1489">            h = null;</span>
+<span class="nc" id="L1490">        } catch (UnknownHostException ue){</span>
+<span class="nc" id="L1491">            p = null;</span>
+<span class="nc" id="L1492">            h = null;</span>
+        }
+
+<span class="nc bnc" id="L1495" title="All 6 branches missed.">        if (topology != null &amp;&amp; p != null &amp;&amp; h != null) {</span>
+<span class="nc bnc" id="L1496" title="All 2 branches missed.">            if (update.change.equals(DeviceUpdate.Change.ADD)) {</span>
+<span class="nc" id="L1497">                Tier tier = new Tier(1);</span>
+<span class="nc" id="L1498">                switchManager.setNodeProp(node, tier);</span>
+<span class="nc" id="L1499">                topology.updateHostLink(p, h, UpdateType.ADDED, null);</span>
+<span class="nc" id="L1500">            } else {</span>
+                // No need to reset the tiering if no other hosts are currently
+                // connected
+                // If this switch was discovered to be an access switch, it
+                // still is even if the host is down
+<span class="nc" id="L1505">                Tier tier = new Tier(0);</span>
+<span class="nc" id="L1506">                switchManager.setNodeProp(node, tier);</span>
+<span class="nc" id="L1507">                topology.updateHostLink(p, h, UpdateType.REMOVED, null);</span>
+            }
+        }
+
+<span class="nc bnc" id="L1511" title="All 4 branches missed.">        if (listeners == null &amp;&amp; newHostNotify.isEmpty()) {</span>
+<span class="nc" id="L1512">            return;</span>
+        }
+        /**
+         * TODO: IfNewHostNotify is needed for current controller API.
+         * Adding logic so that existing apps (like SimpleForwardingManager)
+         * work.  IDeviceListener adds additional methods and uses IListener's
+         * callback ordering.  The two interfaces need to be merged.
+         */
+
+<span class="nc bnc" id="L1521" title="All 2 branches missed.">        for (IfNewHostNotify notify : newHostNotify){</span>
+<span class="nc bnc" id="L1522" title="All 3 branches missed.">            switch (update.change) {</span>
+            case ADD:
+<span class="nc" id="L1524">                notify.notifyHTClient(update.device.toHostNodeConnector());</span>
+<span class="nc" id="L1525">                break;</span>
+            case DELETE:
+<span class="nc" id="L1527">                notify.notifyHTClientHostRemoved(update.device.toHostNodeConnector());</span>
+                break;
+            case CHANGE:
+            }
+        }
+
+        /**
+         * TODO: Remove this section as IDeviceListener functionality gets
+         * merged with IfNewHostNotify
+         */
+<span class="nc bnc" id="L1537" title="All 2 branches missed.">        for (IDeviceListener listener : listeners) {</span>
+<span class="nc bnc" id="L1538" title="All 4 branches missed.">            switch (update.change) {</span>
+            case ADD:
+<span class="nc" id="L1540">                listener.deviceAdded(update.device);</span>
+<span class="nc" id="L1541">                break;</span>
+            case DELETE:
+<span class="nc" id="L1543">                listener.deviceRemoved(update.device);</span>
+<span class="nc" id="L1544">                break;</span>
+            case CHANGE:
+<span class="nc bnc" id="L1546" title="All 2 branches missed.">                for (DeviceField field : update.fieldsChanged) {</span>
+<span class="nc bnc" id="L1547" title="All 4 branches missed.">                    switch (field) {</span>
+                    case IPV4:
+<span class="nc" id="L1549">                        listener.deviceIPV4AddrChanged(update.device);</span>
+<span class="nc" id="L1550">                        break;</span>
+                    case SWITCHPORT:
+                        // listener.deviceMoved(update.device);
+<span class="nc" id="L1553">                        break;</span>
+                    case VLAN:
+<span class="nc" id="L1555">                        listener.deviceVlanChanged(update.device);</span>
+<span class="nc" id="L1556">                        break;</span>
+                    default:
+<span class="nc" id="L1558">                        logger.debug(&quot;Unknown device field changed {}&quot;,</span>
+<span class="nc" id="L1559">                                update.fieldsChanged.toString());</span>
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+<span class="nc" id="L1566">    }</span>
+
+    /**
+     * Check if the entity e has all the keyFields set. Returns false if not
+     *
+     * @param e
+     *            entity to check
+     * @param keyFields
+     *            the key fields to check e against
+     * @return
+     */
+    protected boolean allKeyFieldsPresent(Entity e,
+            EnumSet&lt;DeviceField&gt; keyFields) {
+<span class="nc bnc" id="L1579" title="All 2 branches missed.">        for (DeviceField f : keyFields) {</span>
+<span class="nc bnc" id="L1580" title="All 5 branches missed.">            switch (f) {</span>
+            case MAC:
+                // MAC address is always present
+<span class="nc" id="L1583">                break;</span>
+            case IPV4:
+<span class="nc bnc" id="L1585" title="All 2 branches missed.">                if (e.getIpv4Address() == null)</span>
+<span class="nc" id="L1586">                    return false;</span>
+                break;
+            case SWITCHPORT:
+<span class="nc bnc" id="L1589" title="All 2 branches missed.">                if (e.getPort() == null)</span>
+<span class="nc" id="L1590">                    return false;</span>
+                break;
+            case VLAN:
+                // FIXME: vlan==null is ambiguous: it can mean: not present
+                // or untagged
+                // if (e.vlan == null) return false;
+<span class="nc" id="L1596">                break;</span>
+            default:
+                // we should never get here. unless somebody extended
+                // DeviceFields
+<span class="nc" id="L1600">                throw new IllegalStateException();</span>
+            }
+        }
+<span class="nc" id="L1603">        return true;</span>
+    }
+
+    private LinkedList&lt;DeviceUpdate&gt; updateUpdates(
+            LinkedList&lt;DeviceUpdate&gt; list, DeviceUpdate update) {
+<span class="nc bnc" id="L1608" title="All 2 branches missed.">        if (update == null)</span>
+<span class="nc" id="L1609">            return list;</span>
+<span class="nc bnc" id="L1610" title="All 2 branches missed.">        if (list == null)</span>
+<span class="nc" id="L1611">            list = new LinkedList&lt;DeviceUpdate&gt;();</span>
+<span class="nc" id="L1612">        list.add(update);</span>
+
+<span class="nc" id="L1614">        return list;</span>
+    }
+
+    /**
+     * Get the secondary index for a class. Will return null if the secondary
+     * index was created concurrently in another thread.
+     *
+     * @param clazz
+     *            the class for the index
+     * @return
+     */
+    private ClassState getClassState(IEntityClass clazz) {
+<span class="nc" id="L1626">        ClassState classState = classStateMap.get(clazz.getName());</span>
+<span class="nc bnc" id="L1627" title="All 2 branches missed.">        if (classState != null)</span>
+<span class="nc" id="L1628">            return classState;</span>
+
+<span class="nc" id="L1630">        classState = new ClassState(clazz);</span>
+<span class="nc" id="L1631">        ClassState r = classStateMap.putIfAbsent(clazz.getName(), classState);</span>
+<span class="nc bnc" id="L1632" title="All 2 branches missed.">        if (r != null) {</span>
+            // concurrent add
+<span class="nc" id="L1634">            return r;</span>
+        }
+<span class="nc" id="L1636">        return classState;</span>
+    }
+
+    /**
+     * Update both the primary and class indices for the provided device. If the
+     * update fails because of an concurrent update, will return false.
+     *
+     * @param device
+     *            the device to update
+     * @param deviceKey
+     *            the device key for the device
+     * @return true if the update succeeded, false otherwise.
+     */
+    private boolean updateIndices(Device device, Long deviceKey) {
+<span class="nc bnc" id="L1650" title="All 2 branches missed.">        if (!primaryIndex.updateIndex(device, deviceKey)) {</span>
+<span class="nc" id="L1651">            return false;</span>
+        }
+<span class="nc" id="L1653">        IEntityClass entityClass = device.getEntityClass();</span>
+<span class="nc" id="L1654">        ClassState classState = getClassState(entityClass);</span>
+
+<span class="nc bnc" id="L1656" title="All 2 branches missed.">        if (classState.classIndex != null) {</span>
+<span class="nc bnc" id="L1657" title="All 2 branches missed.">            if (!classState.classIndex.updateIndex(device, deviceKey))</span>
+<span class="nc" id="L1658">                return false;</span>
+        }
+<span class="nc" id="L1660">        return true;</span>
+    }
+
+    /**
+     * Update the secondary indices for the given entity and associated entity
+     * classes
+     *
+     * @param entity
+     *            the entity to update
+     * @param entityClass
+     *            the entity class for the entity
+     * @param deviceKey
+     *            the device key to set up
+     */
+    private void updateSecondaryIndices(Entity entity,
+            IEntityClass entityClass, Long deviceKey) {
+<span class="nc bnc" id="L1676" title="All 2 branches missed.">        for (DeviceIndex index : secondaryIndexMap.values()) {</span>
+<span class="nc" id="L1677">            index.updateIndex(entity, deviceKey);</span>
+        }
+<span class="nc" id="L1679">        ClassState state = getClassState(entityClass);</span>
+<span class="nc bnc" id="L1680" title="All 2 branches missed.">        for (DeviceIndex index : state.secondaryIndexMap.values()) {</span>
+<span class="nc" id="L1681">            index.updateIndex(entity, deviceKey);</span>
+        }
+<span class="nc" id="L1683">    }</span>
+
+    /**
+     * Clean up expired entities/devices
+     */
+    protected void cleanupEntities() {
+        // debugCounters.updateCounter(CNT_CLEANUP_ENTITIES_RUNS);
+
+<span class="nc" id="L1691">        Calendar c = Calendar.getInstance();</span>
+<span class="nc" id="L1692">        c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);</span>
+<span class="nc" id="L1693">        Date cutoff = c.getTime();</span>
+
+<span class="nc" id="L1695">        ArrayList&lt;Entity&gt; toRemove = new ArrayList&lt;Entity&gt;();</span>
+<span class="nc" id="L1696">        ArrayList&lt;Entity&gt; toKeep = new ArrayList&lt;Entity&gt;();</span>
+
+<span class="nc" id="L1698">        Iterator&lt;Device&gt; diter = deviceMap.values().iterator();</span>
+<span class="nc" id="L1699">        LinkedList&lt;DeviceUpdate&gt; deviceUpdates = new LinkedList&lt;DeviceUpdate&gt;();</span>
+
+<span class="nc bnc" id="L1701" title="All 2 branches missed.">        while (diter.hasNext()) {</span>
+<span class="nc" id="L1702">            Device d = diter.next();</span>
+
+            while (true) {
+<span class="nc" id="L1705">                deviceUpdates.clear();</span>
+<span class="nc" id="L1706">                toRemove.clear();</span>
+<span class="nc" id="L1707">                toKeep.clear();</span>
+<span class="nc bnc" id="L1708" title="All 2 branches missed.">                for (Entity e : d.getEntities()) {</span>
+<span class="nc bnc" id="L1709" title="All 2 branches missed.">                    if (e.getLastSeenTimestamp() != null</span>
+<span class="nc bnc" id="L1710" title="All 2 branches missed.">                            &amp;&amp; 0 &gt; e.getLastSeenTimestamp().compareTo(cutoff)) {</span>
+                        // individual entity needs to be removed
+<span class="nc" id="L1712">                        toRemove.add(e);</span>
+<span class="nc" id="L1713">                    } else {</span>
+<span class="nc" id="L1714">                        toKeep.add(e);</span>
+                    }
+                }
+<span class="nc bnc" id="L1717" title="All 2 branches missed.">                if (toRemove.size() == 0) {</span>
+<span class="nc" id="L1718">                    break;</span>
+                }
+
+                // debugCounters.updateCounter(CNT_ENTITY_REMOVED_TIMEOUT);
+<span class="nc bnc" id="L1722" title="All 2 branches missed.">                for (Entity e : toRemove) {</span>
+<span class="nc" id="L1723">                    removeEntity(e, d.getEntityClass(), d.getDeviceKey(),</span>
+<span class="nc" id="L1724">                            toKeep);</span>
+                }
+
+<span class="nc bnc" id="L1727" title="All 2 branches missed.">                if (toKeep.size() &gt; 0) {</span>
+<span class="nc" id="L1728">                    Device newDevice = allocateDevice(d.getDeviceKey(),</span>
+<span class="nc" id="L1729">                            d.getDHCPClientName(), d.oldAPs,</span>
+<span class="nc" id="L1730">                            d.attachmentPoints, toKeep, d.getEntityClass());</span>
+
+<span class="nc" id="L1732">                    EnumSet&lt;DeviceField&gt; changedFields = EnumSet</span>
+<span class="nc" id="L1733">                            .noneOf(DeviceField.class);</span>
+<span class="nc bnc" id="L1734" title="All 2 branches missed.">                    for (Entity e : toRemove) {</span>
+<span class="nc" id="L1735">                        changedFields.addAll(findChangedFields(newDevice, e));</span>
+                    }
+<span class="nc" id="L1737">                    DeviceUpdate update = null;</span>
+<span class="nc bnc" id="L1738" title="All 2 branches missed.">                    if (changedFields.size() &gt; 0) {</span>
+<span class="nc" id="L1739">                        update = new DeviceUpdate(d, CHANGE, changedFields);</span>
+                    }
+
+<span class="nc" id="L1742">                    if (!deviceMap.replace(newDevice.getDeviceKey(), d,</span>
+<span class="nc bnc" id="L1743" title="All 2 branches missed.">                            newDevice)) {</span>
+                        // concurrent modification; try again
+                        // need to use device that is the map now for the next
+                        // iteration
+<span class="nc" id="L1747">                        d = deviceMap.get(d.getDeviceKey());</span>
+<span class="nc bnc" id="L1748" title="All 2 branches missed.">                        if (null != d)</span>
+<span class="nc" id="L1749">                            continue;</span>
+                    }
+<span class="nc bnc" id="L1751" title="All 2 branches missed.">                    if (update != null) {</span>
+                        // need to count after all possibly continue stmts in
+                        // this branch
+                        // debugCounters.updateCounter(CNT_DEVICE_CHANGED);
+<span class="nc" id="L1755">                        deviceUpdates.add(update);</span>
+                    }
+<span class="nc" id="L1757">                } else {</span>
+<span class="nc" id="L1758">                    DeviceUpdate update = new DeviceUpdate(d, DELETE, null);</span>
+<span class="nc bnc" id="L1759" title="All 2 branches missed.">                    if (!deviceMap.remove(d.getDeviceKey(), d)) {</span>
+                        // concurrent modification; try again
+                        // need to use device that is the map now for the next
+                        // iteration
+<span class="nc" id="L1763">                        d = deviceMap.get(d.getDeviceKey());</span>
+<span class="nc bnc" id="L1764" title="All 2 branches missed.">                        if (null != d)</span>
+<span class="nc" id="L1765">                            continue;</span>
+                        // debugCounters.updateCounter(CNT_DEVICE_DELETED);
+                    }
+<span class="nc" id="L1768">                    deviceUpdates.add(update);</span>
+                }
+<span class="nc" id="L1770">                processUpdates(deviceUpdates);</span>
+                break;
+            }
+        }
+<span class="nc" id="L1774">    }</span>
+
+    protected void removeEntity(Entity removed, IEntityClass entityClass,
+            Long deviceKey, Collection&lt;Entity&gt; others) {
+        // Don't count in this method. This method CAN BE called to clean-up
+        // after concurrent device adds/updates and thus counting here
+        // is misleading
+<span class="nc bnc" id="L1781" title="All 2 branches missed.">        for (DeviceIndex index : secondaryIndexMap.values()) {</span>
+<span class="nc" id="L1782">            index.removeEntityIfNeeded(removed, deviceKey, others);</span>
+        }
+<span class="nc" id="L1784">        ClassState classState = getClassState(entityClass);</span>
+<span class="nc bnc" id="L1785" title="All 2 branches missed.">        for (DeviceIndex index : classState.secondaryIndexMap.values()) {</span>
+<span class="nc" id="L1786">            index.removeEntityIfNeeded(removed, deviceKey, others);</span>
+        }
+
+<span class="nc" id="L1789">        primaryIndex.removeEntityIfNeeded(removed, deviceKey, others);</span>
+
+<span class="nc bnc" id="L1791" title="All 2 branches missed.">        if (classState.classIndex != null) {</span>
+<span class="nc" id="L1792">            classState.classIndex.removeEntityIfNeeded(removed, deviceKey,</span>
+<span class="nc" id="L1793">                    others);</span>
+        }
+<span class="nc" id="L1795">    }</span>
+
+    /**
+     * method to delete a given device, remove all entities first and then
+     * finally delete the device itself.
+     *
+     * @param device
+     */
+    protected void deleteDevice(Device device) {
+        // Don't count in this method. This method CAN BE called to clean-up
+        // after concurrent device adds/updates and thus counting here
+        // is misleading
+<span class="nc" id="L1807">        ArrayList&lt;Entity&gt; emptyToKeep = new ArrayList&lt;Entity&gt;();</span>
+<span class="nc bnc" id="L1808" title="All 2 branches missed.">        for (Entity entity : device.getEntities()) {</span>
+<span class="nc" id="L1809">            this.removeEntity(entity, device.getEntityClass(),</span>
+<span class="nc" id="L1810">                    device.getDeviceKey(), emptyToKeep);</span>
+        }
+<span class="nc bnc" id="L1812" title="All 2 branches missed.">        if (!deviceMap.remove(device.getDeviceKey(), device)) {</span>
+<span class="nc bnc" id="L1813" title="All 2 branches missed.">            if (logger.isDebugEnabled())</span>
+<span class="nc" id="L1814">                logger.debug(&quot;device map does not have this device -&quot;</span>
+<span class="nc" id="L1815">                        + device.toString());</span>
+        }
+<span class="nc" id="L1817">    }</span>
+
+    private EnumSet&lt;DeviceField&gt; getEntityKeys(Long macAddress, Short vlan,
+            Integer ipv4Address, NodeConnector port) {
+        // FIXME: vlan==null is a valid search. Need to handle this
+        // case correctly. Note that the code will still work correctly.
+        // But we might do a full device search instead of using an index.
+<span class="nc" id="L1824">        EnumSet&lt;DeviceField&gt; keys = EnumSet.noneOf(DeviceField.class);</span>
+<span class="nc bnc" id="L1825" title="All 2 branches missed.">        if (macAddress != null)</span>
+<span class="nc" id="L1826">            keys.add(DeviceField.MAC);</span>
+<span class="nc bnc" id="L1827" title="All 2 branches missed.">        if (vlan != null)</span>
+<span class="nc" id="L1828">            keys.add(DeviceField.VLAN);</span>
+<span class="nc bnc" id="L1829" title="All 2 branches missed.">        if (ipv4Address != null)</span>
+<span class="nc" id="L1830">            keys.add(DeviceField.IPV4);</span>
+<span class="nc bnc" id="L1831" title="All 2 branches missed.">        if (port != null)</span>
+<span class="nc" id="L1832">            keys.add(DeviceField.SWITCHPORT);</span>
+<span class="nc" id="L1833">        return keys;</span>
+    }
+
+    protected Iterator&lt;Device&gt; queryClassByEntity(IEntityClass clazz,
+            EnumSet&lt;DeviceField&gt; keyFields, Entity entity) {
+<span class="nc" id="L1838">        ClassState classState = getClassState(clazz);</span>
+<span class="nc" id="L1839">        DeviceIndex index = classState.secondaryIndexMap.get(keyFields);</span>
+<span class="nc bnc" id="L1840" title="All 2 branches missed.">        if (index == null)</span>
+<span class="nc" id="L1841">            return Collections.&lt;Device&gt; emptySet().iterator();</span>
+<span class="nc" id="L1842">        return new DeviceIndexInterator(this, index.queryByEntity(entity));</span>
+    }
+
+    protected Device allocateDevice(Long deviceKey, Entity entity,
+            IEntityClass entityClass) {
+<span class="nc" id="L1847">        return new Device(this, deviceKey, entity, entityClass);</span>
+    }
+
+    // TODO: FIX THIS.
+    protected Device allocateDevice(Long deviceKey, String dhcpClientName,
+            List&lt;AttachmentPoint&gt; aps, List&lt;AttachmentPoint&gt; trueAPs,
+            Collection&lt;Entity&gt; entities, IEntityClass entityClass) {
+<span class="nc" id="L1854">        return new Device(this, deviceKey, dhcpClientName, aps, trueAPs,</span>
+<span class="nc" id="L1855">                entities, entityClass);</span>
+    }
+
+    protected Device allocateDevice(Device device, Entity entity,
+            int insertionpoint) {
+<span class="nc" id="L1860">        return new Device(device, entity, insertionpoint);</span>
+    }
+
+    // not used
+    protected Device allocateDevice(Device device, Set&lt;Entity&gt; entities) {
+<span class="nc" id="L1865">        List&lt;AttachmentPoint&gt; newPossibleAPs = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc" id="L1866">        List&lt;AttachmentPoint&gt; newAPs = new ArrayList&lt;AttachmentPoint&gt;();</span>
+<span class="nc bnc" id="L1867" title="All 2 branches missed.">        for (Entity entity : entities) {</span>
+<span class="nc bnc" id="L1868" title="All 2 branches missed.">            if (entity.getPort() != null) {</span>
+<span class="nc" id="L1869">                AttachmentPoint aP = new AttachmentPoint(entity.getPort(), 0);</span>
+<span class="nc" id="L1870">                newPossibleAPs.add(aP);</span>
+            }
+        }
+<span class="nc bnc" id="L1873" title="All 2 branches missed.">        if (device.attachmentPoints != null) {</span>
+<span class="nc bnc" id="L1874" title="All 2 branches missed.">            for (AttachmentPoint oldAP : device.attachmentPoints) {</span>
+<span class="nc bnc" id="L1875" title="All 2 branches missed.">                if (newPossibleAPs.contains(oldAP)) {</span>
+<span class="nc" id="L1876">                    newAPs.add(oldAP);</span>
+                }
+            }
+        }
+<span class="nc bnc" id="L1880" title="All 2 branches missed.">        if (newAPs.isEmpty())</span>
+<span class="nc" id="L1881">            newAPs = null;</span>
+<span class="nc" id="L1882">        Device d = new Device(this, device.getDeviceKey(),</span>
+<span class="nc" id="L1883">                device.getDHCPClientName(), newAPs, null, entities,</span>
+<span class="nc" id="L1884">                device.getEntityClass());</span>
+<span class="nc" id="L1885">        d.updateAttachmentPoint();</span>
+<span class="nc" id="L1886">        return d;</span>
+    }
+
+    // *********************
+    // ITopologyManagerAware
+    // *********************
+
+    @Override
+    public void edgeUpdate(List&lt;TopoEdgeUpdate&gt; topoedgeupdateList) {
+<span class="nc" id="L1895">        Iterator&lt;Device&gt; diter = deviceMap.values().iterator();</span>
+
+<span class="nc bnc" id="L1897" title="All 2 branches missed.">        while (diter.hasNext()) {</span>
+<span class="nc" id="L1898">            Device d = diter.next();</span>
+<span class="nc bnc" id="L1899" title="All 2 branches missed.">            if (d.updateAttachmentPoint()) {</span>
+<span class="nc bnc" id="L1900" title="All 2 branches missed.">                if (logger.isDebugEnabled()) {</span>
+<span class="nc" id="L1901">                    logger.debug(&quot;Attachment point changed for device: {}&quot;, d);</span>
+                }
+<span class="nc" id="L1903">                sendDeviceMovedNotification(d);</span>
+            }
+        }
+<span class="nc" id="L1906">    }</span>
+
+    @Override
+    public void edgeOverUtilized(Edge edge) {
+        // nothing to do
+<span class="nc" id="L1911">    }</span>
+
+    @Override
+    public void edgeUtilBackToNormal(Edge edge) {
+        // nothing to do
+<span class="nc" id="L1916">    }</span>
+
+    // *********************
+    // IEntityClassListener
+    // *********************
+
+    @Override
+    public void entityClassChanged(Set&lt;String&gt; entityClassNames) {
+        /*
+         * iterate through the devices, reclassify the devices that belong to
+         * these entity class names
+         */
+<span class="nc" id="L1928">        Iterator&lt;Device&gt; diter = deviceMap.values().iterator();</span>
+<span class="nc bnc" id="L1929" title="All 2 branches missed.">        while (diter.hasNext()) {</span>
+<span class="nc" id="L1930">            Device d = diter.next();</span>
+<span class="nc bnc" id="L1931" title="All 2 branches missed.">            if (d.getEntityClass() == null</span>
+<span class="nc bnc" id="L1932" title="All 2 branches missed.">                    || entityClassNames.contains(d.getEntityClass().getName()))</span>
+<span class="nc" id="L1933">                reclassifyDevice(d);</span>
+        }
+<span class="nc" id="L1935">    }</span>
+
+    // *************
+    // Local methods
+    // *************
+    /**
+     * Send update notifications to listeners
+     *
+     * @param updates
+     *            the updates to process.
+     */
+    protected void sendDeviceMovedNotification(Device d) {
+        // debugCounters.updateCounter(CNT_DEVICE_MOVED);
+        // deviceSyncManager.storeDevice(d);
+<span class="nc" id="L1949">        List&lt;IDeviceListener&gt; listeners = deviceListeners.getOrderedListeners();</span>
+<span class="nc bnc" id="L1950" title="All 2 branches missed.">        if (listeners != null) {</span>
+<span class="nc bnc" id="L1951" title="All 2 branches missed.">            for (IDeviceListener listener : listeners) {</span>
+<span class="nc" id="L1952">                listener.deviceMoved(d);</span>
+            }
+        }
+<span class="nc" id="L1955">    }</span>
+    /**
+     * Send update notifications to listeners.
+     * IfNewHostNotify listeners need to remove old device and add new device.
+     * @param device
+     * @param oldDevice
+     */
+    protected void sendDeviceMovedNotification(Device device, Device oldDevice){
+<span class="nc bnc" id="L1963" title="All 2 branches missed.">        for (IfNewHostNotify notify : newHostNotify){</span>
+<span class="nc" id="L1964">                notify.notifyHTClientHostRemoved(oldDevice.toHostNodeConnector());</span>
+<span class="nc" id="L1965">                notify.notifyHTClient(device.toHostNodeConnector());</span>
+            }
+<span class="nc" id="L1967">        sendDeviceMovedNotification(device);</span>
+<span class="nc" id="L1968">        }</span>
+
+    /**
+     * this method will reclassify and reconcile a device - possibilities are -
+     * create new device(s), remove entities from this device. If the device
+     * entity class did not change then it returns false else true.
+     *
+     * @param device
+     */
+    protected boolean reclassifyDevice(Device device) {
+        // first classify all entities of this device
+<span class="nc bnc" id="L1979" title="All 2 branches missed.">        if (device == null) {</span>
+<span class="nc" id="L1980">            logger.debug(&quot;In reclassify for null device&quot;);</span>
+<span class="nc" id="L1981">            return false;</span>
+        }
+<span class="nc" id="L1983">        boolean needToReclassify = false;</span>
+<span class="nc bnc" id="L1984" title="All 2 branches missed.">        for (Entity entity : device.entities) {</span>
+<span class="nc" id="L1985">            IEntityClass entityClass = this.entityClassifier</span>
+<span class="nc" id="L1986">                    .classifyEntity(entity);</span>
+<span class="nc bnc" id="L1987" title="All 4 branches missed.">            if (entityClass == null || device.getEntityClass() == null) {</span>
+<span class="nc" id="L1988">                needToReclassify = true;</span>
+<span class="nc" id="L1989">                break;</span>
+            }
+<span class="nc" id="L1991">            if (!entityClass.getName()</span>
+<span class="nc bnc" id="L1992" title="All 2 branches missed.">                    .equals(device.getEntityClass().getName())) {</span>
+<span class="nc" id="L1993">                needToReclassify = true;</span>
+<span class="nc" id="L1994">                break;</span>
+            }
+        }
+<span class="nc bnc" id="L1997" title="All 2 branches missed.">        if (needToReclassify == false) {</span>
+<span class="nc" id="L1998">            return false;</span>
+        }
+
+        // debugCounters.updateCounter(CNT_DEVICE_RECLASSIFY_DELETE);
+<span class="nc" id="L2002">        LinkedList&lt;DeviceUpdate&gt; deviceUpdates = new LinkedList&lt;DeviceUpdate&gt;();</span>
+        // delete this device and then re-learn all the entities
+<span class="nc" id="L2004">        this.deleteDevice(device);</span>
+<span class="nc" id="L2005">        deviceUpdates.add(new DeviceUpdate(device, DeviceUpdate.Change.DELETE,</span>
+<span class="nc" id="L2006">                null));</span>
+<span class="nc bnc" id="L2007" title="All 2 branches missed.">        if (!deviceUpdates.isEmpty())</span>
+<span class="nc" id="L2008">            processUpdates(deviceUpdates);</span>
+<span class="nc bnc" id="L2009" title="All 2 branches missed.">        for (Entity entity : device.entities) {</span>
+<span class="nc" id="L2010">            this.learnDeviceByEntity(entity);</span>
+        }
+<span class="nc" id="L2012">        return true;</span>
+    }
+
+    /**
+     * For testing: sets the interval between writes of the same device to the
+     * device store.
+     *
+     * @param intervalMs
+     */
+    // void setSyncStoreWriteInterval(int intervalMs) {
+    // this.syncStoreWriteIntervalMs = intervalMs;
+    // }
+
+    /**
+     * For testing: sets the time between transition to MASTER and consolidate
+     * store
+     *
+     * @param intervalMs
+     */
+    // void setInitialSyncStoreConsolidateMs(int intervalMs) {
+    // this.initialSyncStoreConsolidateMs = intervalMs;
+    // }
+
+    private long toLong(byte[] address) {
+<span class="nc" id="L2036">        long mac = 0;</span>
+<span class="nc bnc" id="L2037" title="All 2 branches missed.">        for (int i = 0; i &lt; 6; i++) {</span>
+<span class="nc" id="L2038">            long t = (address[i] &amp; 0xffL) &lt;&lt; ((5 - i) * 8);</span>
+<span class="nc" id="L2039">            mac |= t;</span>
+        }
+<span class="nc" id="L2041">        return mac;</span>
+    }
+
+    /**
+     * Accepts an IPv4 address in a byte array and returns the corresponding
+     * 32-bit integer value.
+     *
+     * @param ipAddress
+     * @return
+     */
+    private static int toIPv4Address(byte[] ipAddress) {
+<span class="nc" id="L2052">        int ip = 0;</span>
+<span class="nc bnc" id="L2053" title="All 2 branches missed.">        for (int i = 0; i &lt; 4; i++) {</span>
+<span class="nc" id="L2054">            int t = (ipAddress[i] &amp; 0xff) &lt;&lt; ((3 - i) * 8);</span>
+<span class="nc" id="L2055">            ip |= t;</span>
+        }
+<span class="nc" id="L2057">        return ip;</span>
+    }
+
+    private void registerDeviceManagerDebugCounters() {
+        /*
+         * XXX Missing functionality if (debugCounters == null) {
+         * logger.error(&quot;Debug Counter Service not found.&quot;); debugCounters = new
+         * NullDebugCounter(); return; }
+         * debugCounters.registerCounter(CNT_INCOMING,
+         * &quot;All incoming packets seen by this module&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_RECONCILE_REQUEST,
+         * &quot;Number of flows that have been received for reconciliation by &quot; +
+         * &quot;this module&quot;, CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_RECONCILE_NO_SOURCE,
+         * &quot;Number of flow reconcile events that failed because no source &quot; +
+         * &quot;device could be identified&quot;, CounterType.WARN); // is this really a
+         * warning debugCounters.registerCounter(CNT_RECONCILE_NO_DEST,
+         * &quot;Number of flow reconcile events that failed because no &quot; +
+         * &quot;destination device could be identified&quot;, CounterType.WARN); // is
+         * this really a warning
+         * debugCounters.registerCounter(CNT_BROADCAST_SOURCE,
+         * &quot;Number of packetIns that were discarded because the source &quot; +
+         * &quot;MAC was broadcast or multicast&quot;, CounterType.WARN);
+         * debugCounters.registerCounter(CNT_NO_SOURCE,
+         * &quot;Number of packetIns that were discarded because the &quot; +
+         * &quot;could not identify a source device. This can happen if a &quot; +
+         * &quot;packet is not allowed, appears on an illegal port, does not &quot; +
+         * &quot;have a valid address space, etc.&quot;, CounterType.WARN);
+         * debugCounters.registerCounter(CNT_NO_DEST,
+         * &quot;Number of packetIns that did not have an associated &quot; +
+         * &quot;destination device. E.g., because the destination MAC is &quot; +
+         * &quot;broadcast/multicast or is not yet known to the controller.&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DHCP_CLIENT_NAME_SNOOPED,
+         * &quot;Number of times a DHCP client name was snooped from a &quot; +
+         * &quot;packetIn.&quot;, CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DEVICE_ON_INTERAL_PORT_NOT_LEARNED,
+         * &quot;Number of times packetIn was received on an internal port and&quot; +
+         * &quot;no source device is known for the source MAC. The packetIn is &quot; +
+         * &quot;discarded.&quot;, CounterType.WARN);
+         * debugCounters.registerCounter(CNT_PACKET_NOT_ALLOWED,
+         * &quot;Number of times a packetIn was not allowed due to spoofing &quot; +
+         * &quot;protection configuration.&quot;, CounterType.WARN); // is this really a
+         * warning? debugCounters.registerCounter(CNT_NEW_DEVICE,
+         * &quot;Number of times a new device was learned&quot;,
+         * CounterType.ALWAYS_COUNT); debugCounters.registerCounter(
+         * CNT_PACKET_ON_INTERNAL_PORT_FOR_KNOWN_DEVICE,
+         * &quot;Number of times a packetIn was received on an internal port &quot; +
+         * &quot;for a known device.&quot;, CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_NEW_ENTITY,
+         * &quot;Number of times a new entity was learned for an existing device&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DEVICE_CHANGED,
+         * &quot;Number of times device properties have changed&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DEVICE_MOVED,
+         * &quot;Number of times devices have moved&quot;, CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_CLEANUP_ENTITIES_RUNS,
+         * &quot;Number of times the entity cleanup task has been run&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_ENTITY_REMOVED_TIMEOUT,
+         * &quot;Number of times entities have been removed due to timeout &quot; +
+         * &quot;(entity has been inactive for &quot; + ENTITY_TIMEOUT/1000 + &quot;s)&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DEVICE_DELETED,
+         * &quot;Number of devices that have been removed due to inactivity&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DEVICE_RECLASSIFY_DELETE,
+         * &quot;Number of devices that required reclassification and have been &quot; +
+         * &quot;temporarily delete for reclassification&quot;, CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DEVICE_STORED,
+         * &quot;Number of device entries written or updated to the sync store&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DEVICE_STORE_THROTTLED,
+         * &quot;Number of times a device update to the sync store was &quot; +
+         * &quot;requested but not performed because the same device entities &quot; +
+         * &quot;have recently been updated already&quot;, CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_DEVICE_REMOVED_FROM_STORE,
+         * &quot;Number of devices that were removed from the sync store &quot; +
+         * &quot;because the local controller removed the device due to &quot; +
+         * &quot;inactivity&quot;, CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_SYNC_EXCEPTION,
+         * &quot;Number of times an operation on the sync store resulted in &quot; +
+         * &quot;sync exception&quot;, CounterType.WARN); // it this an error?
+         * debugCounters.registerCounter(CNT_DEVICES_FROM_STORE,
+         * &quot;Number of devices that were read from the sync store after &quot; +
+         * &quot;the local controller transitioned from SLAVE to MASTER&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_CONSOLIDATE_STORE_RUNS,
+         * &quot;Number of times the task to consolidate entries in the &quot; +
+         * &quot;store witch live known devices has been run&quot;,
+         * CounterType.ALWAYS_COUNT);
+         * debugCounters.registerCounter(CNT_CONSOLIDATE_STORE_DEVICES_REMOVED,
+         * &quot;Number of times a device has been removed from the sync &quot; +
+         * &quot;store because no corresponding live device is known. &quot; +
+         * &quot;This indicates a remote controller still writing device &quot; +
+         * &quot;entries despite the local controller being MASTER or an &quot; +
+         * &quot;incosistent store update from the local controller.&quot;,
+         * CounterType.WARN);
+         * debugCounters.registerCounter(CNT_TRANSITION_TO_MASTER,
+         * &quot;Number of times this controller has transitioned from SLAVE &quot; +
+         * &quot;to MASTER role. Will be 0 or 1.&quot;, CounterType.ALWAYS_COUNT);
+         */
+<span class="nc" id="L2161">    }</span>
+
+    @Override
+    public HostNodeConnector hostFind(InetAddress networkAddress) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L2166">        return null;</span>
+    }
+
+    @Override
+    public HostNodeConnector hostQuery(InetAddress networkAddress) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L2172">        return null;</span>
+    }
+
+    @Override
+    public Future&lt;HostNodeConnector&gt; discoverHost(InetAddress networkAddress) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L2178">        return null;</span>
+    }
+
+    @Override
+    public List&lt;List&lt;String&gt;&gt; getHostNetworkHierarchy(InetAddress hostAddress) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L2184">        return null;</span>
+    }
+
+    @Override
+    public Set&lt;HostNodeConnector&gt; getAllHosts() {
+<span class="nc" id="L2189">        Collection&lt;Device&gt; devices = Collections</span>
+<span class="nc" id="L2190">                .unmodifiableCollection(deviceMap.values());</span>
+<span class="nc" id="L2191">        Iterator&lt;Device&gt; i = devices.iterator();</span>
+<span class="nc" id="L2192">        Set&lt;HostNodeConnector&gt; nc = new HashSet&lt;HostNodeConnector&gt;();</span>
+<span class="nc bnc" id="L2193" title="All 2 branches missed.">        while (i.hasNext()) {</span>
+<span class="nc" id="L2194">            Device device = i.next();</span>
+<span class="nc" id="L2195">            nc.add(device.toHostNodeConnector());</span>
+        }
+<span class="nc" id="L2197">        return nc;</span>
+    }
+
+    @Override
+    public Set&lt;HostNodeConnector&gt; getActiveStaticHosts() {
+<span class="nc" id="L2202">        Collection&lt;Device&gt; devices = Collections</span>
+<span class="nc" id="L2203">                .unmodifiableCollection(deviceMap.values());</span>
+<span class="nc" id="L2204">        Iterator&lt;Device&gt; i = devices.iterator();</span>
+<span class="nc" id="L2205">        Set&lt;HostNodeConnector&gt; nc = new HashSet&lt;HostNodeConnector&gt;();</span>
+<span class="nc bnc" id="L2206" title="All 2 branches missed.">        while (i.hasNext()) {</span>
+<span class="nc" id="L2207">            Device device = i.next();</span>
+<span class="nc bnc" id="L2208" title="All 2 branches missed.">            if(device.isStaticHost())</span>
+<span class="nc" id="L2209">                nc.add(device.toHostNodeConnector());</span>
+        }
+<span class="nc" id="L2211">        return nc;</span>
+    }
+
+    @Override
+    public Set&lt;HostNodeConnector&gt; getInactiveStaticHosts() {
+        // TODO Auto-generated method stub
+<span class="nc" id="L2217">        return null;</span>
+    }
+
+    @Override
+    public Status addStaticHost(String networkAddress, String dataLayerAddress,
+            NodeConnector nc, String vlan) {
+<span class="nc" id="L2223">        Long mac = HexEncode.stringToLong(dataLayerAddress);</span>
+        try{
+<span class="nc" id="L2225">            InetAddress addr = InetAddress.getByName(networkAddress);</span>
+<span class="nc" id="L2226">            int ip = toIPv4Address(addr.getAddress());</span>
+<span class="nc" id="L2227">            Entity e = new Entity(mac, Short.valueOf(vlan), ip, nc, new Date());</span>
+<span class="nc" id="L2228">            Device d = this.learnDeviceByEntity(e);</span>
+<span class="nc" id="L2229">            d.setStaticHost(true);</span>
+<span class="nc" id="L2230">            return new Status(StatusCode.SUCCESS);</span>
+<span class="nc" id="L2231">        }catch(UnknownHostException e){</span>
+<span class="nc" id="L2232">            return new Status(StatusCode.INTERNALERROR);</span>
+        }
+    }
+
+    @Override
+    public Status removeStaticHost(String networkAddress) {
+        Integer addr;
+        try {
+<span class="nc" id="L2240">            addr = toIPv4Address(InetAddress.getByName(networkAddress).getAddress());</span>
+<span class="nc" id="L2241">        } catch (UnknownHostException e) {</span>
+<span class="nc" id="L2242">            return new Status(StatusCode.NOTFOUND, &quot;Host does not exist&quot;);</span>
+        }
+<span class="nc" id="L2244">        Iterator&lt;Device&gt; di = this.getDeviceIteratorForQuery(null, null, addr, null);</span>
+<span class="nc" id="L2245">        List&lt;IDeviceListener&gt; listeners = deviceListeners</span>
+<span class="nc" id="L2246">                .getOrderedListeners();</span>
+<span class="nc bnc" id="L2247" title="All 2 branches missed.">        while(di.hasNext()){</span>
+<span class="nc" id="L2248">            Device d = di.next();</span>
+<span class="nc bnc" id="L2249" title="All 2 branches missed.">            if(d.isStaticHost()){</span>
+<span class="nc" id="L2250">                deleteDevice(d);</span>
+<span class="nc bnc" id="L2251" title="All 2 branches missed.">                for (IfNewHostNotify notify : newHostNotify)</span>
+<span class="nc" id="L2252">                    notify.notifyHTClientHostRemoved(d.toHostNodeConnector());</span>
+<span class="nc bnc" id="L2253" title="All 2 branches missed.">                for (IDeviceListener listener : listeners)</span>
+<span class="nc" id="L2254">                        listener.deviceRemoved(d);</span>
+            }
+        }
+<span class="nc" id="L2257">        return new Status(StatusCode.SUCCESS);</span>
+    }
+
+    /**
+     * For testing: consolidate the store NOW
+     */
+    // void scheduleConsolidateStoreNow() {
+    // this.storeConsolidateTask.reschedule(0, TimeUnit.MILLISECONDS);
+    // }
+
+    // private class DeviceSyncManager {
+    // // maps (opaque) deviceKey to the time in System.nanoTime() when we
+    // // last wrote the device to the sync store
+    // private ConcurrentMap&lt;Long, Long&gt; lastWriteTimes =
+    // new ConcurrentHashMap&lt;Long, Long&gt;();
+    //
+    // /**
+    // * Write the given device to storage if we are MASTER.
+    // * Use this method if the device has significantly changed (e.g.,
+    // * new AP, new IP, entities removed).
+    // * @param d the device to store
+    // */
+    // public void storeDevice(Device d) {
+    // if (!isMaster)
+    // return;
+    // if (d == null)
+    // return;
+    // long now = System.nanoTime();
+    // writeUpdatedDeviceToStorage(d);
+    // lastWriteTimes.put(d.getDeviceKey(), now);
+    // }
+    //
+    // /**
+    // * Write the given device to storage if we are MASTER and if the
+    // * last write for the device was more than this.syncStoreIntervalNs
+    // * time ago.
+    // * Use this method to updated last active times in the store.
+    // * @param d the device to store
+    // */
+    // public void storeDeviceThrottled(Device d) {
+    // long intervalNs = syncStoreWriteIntervalMs*1000L*1000L;
+    // if (!isMaster)
+    // return;
+    // if (d == null)
+    // return;
+    // long now = System.nanoTime();
+    // Long last = lastWriteTimes.get(d.getDeviceKey());
+    // if (last == null ||
+    // now - last &gt; intervalNs) {
+    // writeUpdatedDeviceToStorage(d);
+    // lastWriteTimes.put(d.getDeviceKey(), now);
+    // } else {
+    // debugCounters.updateCounter(CNT_DEVICE_STORE_THROTTLED);
+    // }
+    // }
+    //
+    // /**
+    // * Remove the given device from the store. If only some entities have
+    // * been removed the updated device should be written using
+    // * {@link #storeDevice(Device)}
+    // * @param d
+    // */
+    // public void removeDevice(Device d) {
+    // if (!isMaster)
+    // return;
+    // // FIXME: could we have a problem with concurrent put to the
+    // // hashMap? I.e., we write a stale entry to the map after the
+    // // delete and now are left with an entry we'll never clean up
+    // lastWriteTimes.remove(d.getDeviceKey());
+    // try {
+    // // TODO: should probably do versioned delete. OTOH, even
+    // // if we accidentally delete, we'll write it again after
+    // // the next entity ....
+    // debugCounters.updateCounter(CNT_DEVICE_REMOVED_FROM_STORE);
+    // storeClient.delete(DeviceSyncRepresentation.computeKey(d));
+    // } catch(ObsoleteVersionException e) {
+    // // FIXME
+    // } catch (SyncException e) {
+    // debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+    // logger.error(&quot;Could not remove device &quot; + d + &quot; from store&quot;, e);
+    // }
+    // }
+    //
+    // /**
+    // * Remove the given Versioned device from the store. If the device
+    // * was locally modified ignore the delete request.
+    // * @param syncedDeviceKey
+    // */
+    // private void removeDevice(Versioned&lt;DeviceSyncRepresentation&gt; dev) {
+    // try {
+    // debugCounters.updateCounter(CNT_DEVICE_REMOVED_FROM_STORE);
+    // storeClient.delete(dev.getValue().getKey(),
+    // dev.getVersion());
+    // } catch(ObsoleteVersionException e) {
+    // // Key was locally modified by another thread.
+    // // Do not delete and ignore.
+    // } catch(SyncException e) {
+    // debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+    // logger.error(&quot;Failed to remove device entry for &quot; +
+    // dev.toString() + &quot; from store.&quot;, e);
+    // }
+    // }
+    //
+    // /**
+    // * Synchronously transition from SLAVE to MASTER. By iterating through
+    // * the store and learning all devices from the store
+    // */
+    // private void goToMaster() {
+    // if (logger.isDebugEnabled()) {
+    // logger.debug(&quot;Transitioning to MASTER role&quot;);
+    // }
+    // debugCounters.updateCounter(CNT_TRANSITION_TO_MASTER);
+    // IClosableIterator&lt;Map.Entry&lt;String,Versioned&lt;DeviceSyncRepresentation&gt;&gt;&gt;
+    // iter = null;
+    // try {
+    // iter = storeClient.entries();
+    // } catch (SyncException e) {
+    // debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+    // logger.error(&quot;Failed to read devices from sync store&quot;, e);
+    // return;
+    // }
+    // try {
+    // while(iter.hasNext()) {
+    // Versioned&lt;DeviceSyncRepresentation&gt; versionedDevice =
+    // iter.next().getValue();
+    // DeviceSyncRepresentation storedDevice =
+    // versionedDevice.getValue();
+    // if (storedDevice == null)
+    // continue;
+    // debugCounters.updateCounter(CNT_DEVICES_FROM_STORE);
+    // for(SyncEntity se: storedDevice.getEntities()) {
+    // learnDeviceByEntity(se.asEntity());
+    // }
+    // }
+    // } finally {
+    // if (iter != null)
+    // iter.close();
+    // }
+    // storeConsolidateTask.reschedule(initialSyncStoreConsolidateMs,
+    // TimeUnit.MILLISECONDS);
+    // }
+    //
+    // /**
+    // * Actually perform the write of the device to the store
+    // * FIXME: concurrent modification behavior
+    // * @param device The device to write
+    // */
+    // private void writeUpdatedDeviceToStorage(Device device) {
+    // try {
+    // debugCounters.updateCounter(CNT_DEVICE_STORED);
+    // // FIXME: use a versioned put
+    // DeviceSyncRepresentation storeDevice =
+    // new DeviceSyncRepresentation(device);
+    // storeClient.put(storeDevice.getKey(), storeDevice);
+    // } catch (ObsoleteVersionException e) {
+    // // FIXME: what's the right behavior here. Can the store client
+    // // even throw this error?
+    // } catch (SyncException e) {
+    // debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+    // logger.error(&quot;Could not write device &quot; + device +
+    // &quot; to sync store:&quot;, e);
+    // }
+    // }
+    //
+    // /**
+    // * Iterate through all entries in the sync store. For each device
+    // * in the store check if any stored entity matches a live device. If
+    // * no entities match a live device we remove the entry from the store.
+    // *
+    // * Note: we do not check if all devices known to device manager are
+    // * in the store. We rely on regular packetIns for that.
+    // * Note: it's possible that multiple entries in the store map to the
+    // * same device. We don't check or handle this case.
+    // *
+    // * We need to perform this check after a SLAVE-&gt;MASTER transition to
+    // * get rid of all entries the old master might have written to the
+    // * store after we took over. We also run it regularly in MASTER
+    // * state to ensure we don't have stale entries in the store
+    // */
+    // private void consolidateStore() {
+    // if (!isMaster)
+    // return;
+    // debugCounters.updateCounter(CNT_CONSOLIDATE_STORE_RUNS);
+    // if (logger.isDebugEnabled()) {
+    // logger.debug(&quot;Running consolidateStore.&quot;);
+    // }
+    // IClosableIterator&lt;Map.Entry&lt;String,Versioned&lt;DeviceSyncRepresentation&gt;&gt;&gt;
+    // iter = null;
+    // try {
+    // iter = storeClient.entries();
+    // } catch (SyncException e) {
+    // debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+    // logger.error(&quot;Failed to read devices from sync store&quot;, e);
+    // return;
+    // }
+    // try {
+    // while(iter.hasNext()) {
+    // boolean found = false;
+    // Versioned&lt;DeviceSyncRepresentation&gt; versionedDevice =
+    // iter.next().getValue();
+    // DeviceSyncRepresentation storedDevice =
+    // versionedDevice.getValue();
+    // if (storedDevice == null)
+    // continue;
+    // for(SyncEntity se: storedDevice.getEntities()) {
+    // try {
+    // // Do we have a device for this entity??
+    // IDevice d = findDevice(se.macAddress, se.vlan,
+    // se.ipv4Address,
+    // se.switchDPID,
+    // se.switchPort);
+    // if (d != null) {
+    // found = true;
+    // break;
+    // }
+    // } catch (IllegalArgumentException e) {
+    // // not all key fields provided. Skip entity
+    // }
+    // }
+    // if (!found) {
+    // // We currently DO NOT have a live device that
+    // // matches the current device from the store.
+    // // Delete device from store.
+    // if (logger.isDebugEnabled()) {
+    // logger.debug(&quot;Removing device {} from store. No &quot;
+    // + &quot;corresponding live device&quot;,
+    // storedDevice.getKey());
+    // }
+    // debugCounters.updateCounter(CNT_CONSOLIDATE_STORE_DEVICES_REMOVED);
+    // removeDevice(versionedDevice);
+    // }
+    // }
+    // } finally {
+    // if (iter != null)
+    // iter.close();
+    // }
+    // }
+    // }
+    //
+    //
+    // /**
+    // * For testing. Sets the syncService. Only call after init but before
+    // * startUp. Used by MockDeviceManager
+    // * @param syncService
+    // */
+    // protected void setSyncServiceIfNotSet(ISyncService syncService) {
+    // if (this.syncService == null)
+    // this.syncService = syncService;
+    // }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

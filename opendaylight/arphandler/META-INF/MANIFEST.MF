@@ -1,0 +1,18 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375489228872
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-Activator: org.opendaylight.controller.arphandler.internal.Activa
+ tor
+Bundle-ManifestVersion: 2
+Bundle-Name: arphandler
+Bundle-SymbolicName: org.opendaylight.controller.arphandler
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Import-Package: org.apache.felix.dm;version="[3.0,4)",org.opendaylight.c
+ ontroller.hosttracker,org.opendaylight.controller.hosttracker.hostAware
+ ,org.opendaylight.controller.sal.core,org.opendaylight.controller.sal.p
+ acket,org.opendaylight.controller.sal.utils,org.opendaylight.controller
+ .switchmanager,org.opendaylight.controller.topologymanager,org.osgi.ser
+ vice.component;version="[1.2,2)",org.slf4j;version="[1.7,2)"
+Tool: Bnd-1.50.0

@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api-docs title="Host Tracker REST API">
+  <data>
+    <schema namespace="" namespaceId="ns0" file="ns0.xsd">
+      <types>
+        <type name="hostNodeConnector" id="org.opendaylight.controller.hosttracker.hostAware.HostNodeConnector" package="org.opendaylight.controller.hosttracker.hostAware" extendsType="org.opendaylight.controller.sal.core.Host">
+          <groups>
+            <group>HostNodeConnector</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="vlan">
+              <choice name="vlan" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="short"/>
+            </element>
+            <element minOccurs="0" maxOccurs="1" jsonName="nodeConnector">
+              <choice name="nodeConnector" namespace="" typeNamespace="" typeName="nodeConnector" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="staticHost">
+              <choice name="staticHost" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="boolean"/>
+            </element>
+          </elements>
+        </type>
+        <type name="hosts" id="org.opendaylight.controller.hosttracker.northbound.Hosts" package="org.opendaylight.controller.hosttracker.northbound">
+          <groups>
+            <group>Hosts</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="host">
+              <choice name="host" namespace="" typeNamespace="" typeName="hostNodeConnector" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="host" id="org.opendaylight.controller.sal.core.Host" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>Host</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="networkAddress">
+              <choice name="networkAddress" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+            <element minOccurs="0" maxOccurs="1" jsonName="dataLayerAddress">
+              <choice name="dataLayerAddress" namespace="" typeNamespace="" typeName="dataLinkAddress" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="node" id="org.opendaylight.controller.sal.core.Node" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>Node</group>
+          </groups>
+          <attributes>
+            <attribute name="id" jsonName="id" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+            <attribute name="type" jsonName="type" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+          </attributes>
+        </type>
+        <type name="nodeConnector" id="org.opendaylight.controller.sal.core.NodeConnector" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>NodeConnector</group>
+          </groups>
+          <attributes>
+            <attribute name="id" jsonName="id" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+            <attribute name="type" jsonName="type" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+          </attributes>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="node">
+              <choice name="node" namespace="" typeNamespace="" typeName="node" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="dataLinkAddress" id="org.opendaylight.controller.sal.packet.address.DataLinkAddress" package="org.opendaylight.controller.sal.packet.address">
+          <groups>
+            <group>DataLinkAddress</group>
+          </groups>
+        </type>
+        <type name="ethernetAddress" id="org.opendaylight.controller.sal.packet.address.EthernetAddress" package="org.opendaylight.controller.sal.packet.address" extendsType="org.opendaylight.controller.sal.packet.address.DataLinkAddress">
+          <groups>
+            <group>EthernetAddress</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="macAddress">
+              <choice name="macAddress" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+          </elements>
+        </type>
+      </types>
+      <elements>
+        <element name="host" type="org.opendaylight.controller.hosttracker.hostAware.HostNodeConnector" typeName="hostNodeConnector" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>HostNodeConnector</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<host>
+  <vlan>...</vlan>
+  <nodeConnector id="..." type="...">
+    <node id="..." type="..." />
+  </nodeConnector>
+  <staticHost>...</staticHost>
+  <networkAddress>...</networkAddress>
+  <dataLayerAddress />
+</host>]]></examplexml>
+          <examplejson><![CDATA[{
+  "vlan" : ...,
+  "nodeConnector" : {
+    "id" : "...",
+    "type" : "...",
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    }
+  },
+  "staticHost" : false,
+  "networkAddress" : "...",
+  "dataLayerAddress" : { }
+}]]></examplejson>
+        </element>
+        <element name="hosts" type="org.opendaylight.controller.hosttracker.northbound.Hosts" typeName="hosts" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Hosts</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<hosts>
+  <host>
+    <vlan>...</vlan>
+    <nodeConnector id="..." type="...">
+      <node id="..." type="..." />
+    </nodeConnector>
+    <staticHost>...</staticHost>
+    <networkAddress>...</networkAddress>
+    <dataLayerAddress />
+  </host>
+  <host>
+    <!--...-->
+  </host>
+  <!--...more "host" elements...-->
+</hosts>]]></examplexml>
+          <examplejson><![CDATA[{
+  "host" : [ {
+    "vlan" : ...,
+    "nodeConnector" : {
+      "id" : "...",
+      "type" : "...",
+      "node" : {
+        "id" : "...",
+        "type" : "..."
+      }
+    },
+    "staticHost" : false,
+    "networkAddress" : "...",
+    "dataLayerAddress" : { }
+  }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="host" type="org.opendaylight.controller.sal.core.Host" typeName="host" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Host</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<host>
+  <networkAddress>...</networkAddress>
+  <dataLayerAddress />
+</host>]]></examplexml>
+          <examplejson><![CDATA[{
+  "networkAddress" : "...",
+  "dataLayerAddress" : { }
+}]]></examplejson>
+        </element>
+        <element name="node" type="org.opendaylight.controller.sal.core.Node" typeName="node" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Node</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<node id="..." type="..." />]]></examplexml>
+          <examplejson><![CDATA[{
+  "id" : "...",
+  "type" : "..."
+}]]></examplejson>
+        </element>
+        <element name="nodeConnector" type="org.opendaylight.controller.sal.core.NodeConnector" typeName="nodeConnector" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>NodeConnector</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeConnector id="..." type="...">
+  <node id="..." type="..." />
+</nodeConnector>]]></examplexml>
+          <examplejson><![CDATA[{
+  "id" : "...",
+  "type" : "...",
+  "node" : {
+    "id" : "...",
+    "type" : "..."
+  }
+}]]></examplejson>
+        </element>
+        <element name="dataLinkAddress" type="org.opendaylight.controller.sal.packet.address.DataLinkAddress" typeName="dataLinkAddress" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>DataLinkAddress</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<dataLinkAddress />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="ethernetAddress" type="org.opendaylight.controller.sal.packet.address.EthernetAddress" typeName="ethernetAddress" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>EthernetAddress</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<ethernetAddress>
+  <macAddress>...</macAddress>
+</ethernetAddress>]]></examplexml>
+          <examplejson><![CDATA[{
+  "macAddress" : "..."
+}]]></examplejson>
+        </element>
+      </elements>
+      <groups>
+        <group>
+          <name>DataLinkAddress</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>EthernetAddress</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Host</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>HostNodeConnector</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Hosts</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Node</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>NodeConnector</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+      </groups>
+    </schema>
+  </data>
+  <soap>
+    <wsdls>
+    </wsdls>
+  </soap>
+  <rest baseAddress="http://localhost:8080/full" wadl="application.wadl">
+    <resources>
+      <resource name="/{containerName}" subcontext="/controller/nb/v2/host">
+        <groups>
+          <group>HostTrackerNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a list of all Hosts : both configured via PUT API and dynamically
+learnt on the network.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="hosts" />
+            
+            <documentation><![CDATA[List of Active Hosts.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/inactive" subcontext="/controller/nb/v2/host">
+        <groups>
+          <group>HostTrackerNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a list of Hosts that are statically configured and are connected
+to a NodeConnector that is down.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="hosts" />
+            
+            <documentation><![CDATA[List of inactive Hosts.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/{networkAddress}" subcontext="/controller/nb/v2/host">
+        <groups>
+          <group>HostTrackerNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a host that matches the IP Address value passed as parameter.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <parameter name="networkAddress" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[IP Address being looked up]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="host" />
+            
+            <documentation><![CDATA[host that matches the IP Address]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="415">
+            <![CDATA[Invalid IP Address passed in networkAddress parameter]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+        <operation name="POST">
+          <documentation>
+            <![CDATA[Add a Static Host configuration]]>
+          </documentation>
+          <contentType type="*/*" consumable="false" produceable="true"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="true" produceable="false"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <parameter name="networkAddress" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Host IP Address]]>
+          </parameter>
+          <parameter name="dataLayerAddress" type="query" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Host L2 data-layer address.]]>
+          </parameter>
+          <parameter name="nodeType" type="query" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Type as specifid by Node class]]>
+          </parameter>
+          <parameter name="nodeId" type="query" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Identifier as specifid by Node class]]>
+          </parameter>
+          <parameter name="nodeConnectorType" type="query" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Port Type as specified by NodeConnector class]]>
+          </parameter>
+          <parameter name="nodeConnectorId" type="query" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Port Identifier as specified by NodeConnector class]]>
+          </parameter>
+          <parameter name="vlan" type="query" defaultValue="0" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Vlan number]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[Response as dictated by the HTTP Response Status code]]></documentation>
+          </outValue>
+          <statusCode code="201">
+            <![CDATA[Flow Config processed successfully]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The Container Name or nodeId or configuration name is not found]]>
+          </statusCode>
+          <statusCode code="406">
+            <![CDATA[Cannot operate on Default Container when other Containers are active]]>
+          </statusCode>
+          <statusCode code="415">
+            <![CDATA[Invalid IP Address passed in networkAddress parameter]]>
+          </statusCode>
+          <statusCode code="500">
+            <![CDATA[Failed to create Static Host entry. Failure Reason included in HTTP Error response]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller services are unavailable]]>
+          </statusCode>
+        </operation>
+        <operation name="DELETE">
+          <documentation>
+            <![CDATA[Delete a Static Host configuration]]>
+          </documentation>
+          <contentType type="*/*" consumable="false" produceable="true"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="true" produceable="false"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <parameter name="networkAddress" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[IP Address]]>
+          </parameter>
+          <outValue>
+            
+            
+            <documentation><![CDATA[Response as dictated by the HTTP Response code.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Flow Config deleted successfully]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The Container Name or Node-id or Flow Name passed is not found]]>
+          </statusCode>
+          <statusCode code="406">
+            <![CDATA[Cannot operate on Default Container when other Containers are active]]>
+          </statusCode>
+          <statusCode code="415">
+            <![CDATA[Invalid IP Address passed in networkAddress parameter]]>
+          </statusCode>
+          <statusCode code="500">
+            <![CDATA[Failed to delete Flow config. Failure Reason included in HTTP Error response]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller service is unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+    </resources>
+    <groups>
+      <group>
+        <name>HostTrackerNorthbound</name>
+        <documentation><![CDATA[Host Tracker Northbound REST APIs.<br>
+This class provides REST APIs to track host location in a network. Host
+Location is represented by Host node connector which is essentially a logical
+entity that represents a Switch/Port. A host is represented by it's
+IP-address and mac-address.
+
+<br>
+<br>
+Authentication scheme : <b>HTTP Basic</b><br>
+Authentication realm : <b>opendaylight</b><br>
+Transport : <b>HTTP and HTTPS</b><br>
+<br>
+HTTPS Authentication is disabled by default. Administrator can enable it in
+tomcat-server.xml after adding a proper keystore / SSL certificate from a
+trusted authority.<br>
+More info :
+http://tomcat.apache.org/tomcat-7.0-doc/ssl-howto.html#Configuration]]></documentation>
+      </group>
+    </groups>
+  </rest>
+  <packages>
+    <package id="org.opendaylight.controller.hosttracker.northbound">
+    </package>
+  </packages>
+</api-docs>

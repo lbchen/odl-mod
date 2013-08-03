@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StatisticsManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">statisticsmanager.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.statisticsmanager.internal</a> &gt; <span class="el_source">StatisticsManager.java</span></div><h1>StatisticsManager.java</h1><pre class="source lang-java linenums">
+/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.statisticsmanager.internal;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.opendaylight.controller.forwardingrulesmanager.FlowEntry;
+import org.opendaylight.controller.sal.core.Node;
+import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.core.NodeTable;
+import org.opendaylight.controller.sal.flowprogrammer.Flow;
+import org.opendaylight.controller.sal.reader.FlowOnNode;
+import org.opendaylight.controller.sal.reader.IReadService;
+import org.opendaylight.controller.sal.reader.NodeConnectorStatistics;
+import org.opendaylight.controller.sal.reader.NodeDescription;
+import org.opendaylight.controller.sal.reader.NodeTableStatistics;
+import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * The class which implements the methods for retrieving
+ * the network nodes statistics.
+ */
+public class StatisticsManager implements IStatisticsManager {
+<span class="nc" id="L36">    private static final Logger log = LoggerFactory</span>
+<span class="nc" id="L37">            .getLogger(StatisticsManager.class);</span>
+    private IReadService reader;
+
+<span class="nc" id="L40">    public StatisticsManager() {</span>
+
+<span class="nc" id="L42">    }</span>
+
+    /**
+     * Function called by the dependency manager when all the required
+     * dependencies are satisfied
+     *
+     */
+    void init() {
+<span class="nc" id="L50">        log.debug(&quot;INIT called!&quot;);</span>
+<span class="nc" id="L51">    }</span>
+
+    /**
+     * Function called by the dependency manager when at least one
+     * dependency become unsatisfied or when the component is shutting
+     * down because for example bundle is being stopped.
+     *
+     */
+    void destroy() {
+<span class="nc" id="L60">        log.debug(&quot;DESTROY called!&quot;);</span>
+<span class="nc" id="L61">    }</span>
+
+    /**
+     * Function called by dependency manager after &quot;init ()&quot; is called
+     * and after the services provided by the class are registered in
+     * the service registry
+     *
+     */
+    void start() {
+<span class="nc" id="L70">        log.debug(&quot;START called!&quot;);</span>
+<span class="nc" id="L71">    }</span>
+
+    /**
+     * Function called by the dependency manager before the services
+     * exported by the component are unregistered, this will be
+     * followed by a &quot;destroy ()&quot; calls
+     *
+     */
+    void stop() {
+<span class="nc" id="L80">        log.debug(&quot;STOP called!&quot;);</span>
+<span class="nc" id="L81">    }</span>
+
+    public void setReaderService(IReadService service) {
+<span class="nc" id="L84">        log.debug(&quot;Got inventory service set request {}&quot;, service);</span>
+<span class="nc" id="L85">        this.reader = service;</span>
+<span class="nc" id="L86">    }</span>
+
+    public void unsetReaderService(IReadService service) {
+<span class="nc" id="L89">        log.debug(&quot;Got a service UNset request&quot;);</span>
+<span class="nc" id="L90">        this.reader = null;</span>
+<span class="nc" id="L91">    }</span>
+
+    @Override
+    public List&lt;FlowOnNode&gt; getFlows(Node node) {
+<span class="nc" id="L95">        return reader.readAllFlows(node);</span>
+    }
+
+    @Override
+    public Map&lt;Node, List&lt;FlowOnNode&gt;&gt; getFlowStatisticsForFlowList(
+            List&lt;FlowEntry&gt; flowList) {
+<span class="nc" id="L101">        Map&lt;Node, List&lt;FlowOnNode&gt;&gt; map = new HashMap&lt;Node, List&lt;FlowOnNode&gt;&gt;();</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (flowList != null) {</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            for (FlowEntry entry : flowList) {</span>
+<span class="nc" id="L104">                Node node = entry.getNode();</span>
+<span class="nc" id="L105">                Flow flow = entry.getFlow();</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">                List&lt;FlowOnNode&gt; list = (map.containsKey(node)) ? map.get(node)</span>
+<span class="nc" id="L107">                        : new ArrayList&lt;FlowOnNode&gt;();</span>
+<span class="nc" id="L108">                list.add(reader.readFlow(node, flow));</span>
+<span class="nc" id="L109">                map.put(node, list);</span>
+            }
+        }
+<span class="nc" id="L112">        return map;</span>
+    }
+
+    @Override
+    public int getFlowsNumber(Node node) {
+<span class="nc" id="L117">        return reader.readAllFlows(node).size();</span>
+    }
+
+    @Override
+    public NodeDescription getNodeDescription(Node node) {
+<span class="nc" id="L122">        return reader.readDescription(node);</span>
+    }
+
+    @Override
+    public NodeConnectorStatistics getNodeConnectorStatistics(
+            NodeConnector nodeConnector) {
+<span class="nc" id="L128">        return reader.readNodeConnector(nodeConnector);</span>
+    }
+
+    @Override
+    public List&lt;NodeConnectorStatistics&gt; getNodeConnectorStatistics(Node node) {
+<span class="nc" id="L133">        return reader.readNodeConnectors(node);</span>
+    }
+
+    @Override
+    public NodeTableStatistics getNodeTableStatistics(NodeTable nodeTable) {
+<span class="nc" id="L138">        return reader.readNodeTable(nodeTable);</span>
+    }
+
+    @Override
+    public List&lt;NodeTableStatistics&gt; getNodeTableStatistics(Node node){
+<span class="nc" id="L143">        return reader.readNodeTable(node);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

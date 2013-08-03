@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Activator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker_new.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">Activator.java</span></div><h1>Activator.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import java.util.Dictionary;
+import java.util.Hashtable;
+
+import org.apache.felix.dm.Component;
+import org.opendaylight.controller.hosttracker.IDeviceService;
+import org.opendaylight.controller.hosttracker.IfIptoHost;
+import org.opendaylight.controller.hosttracker.IfNewHostNotify;
+import org.opendaylight.controller.sal.core.ComponentActivatorAbstractBase;
+import org.opendaylight.controller.sal.packet.IDataPacketService;
+import org.opendaylight.controller.sal.packet.IListenDataPacket;
+import org.opendaylight.controller.switchmanager.ISwitchManager;
+import org.opendaylight.controller.topologymanager.ITopologyManager;
+import org.opendaylight.controller.topologymanager.ITopologyManagerAware;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+<span class="nc" id="L27">public class Activator extends ComponentActivatorAbstractBase {</span>
+<span class="nc" id="L28">    protected static final Logger logger = LoggerFactory</span>
+<span class="nc" id="L29">            .getLogger(Activator.class);</span>
+
+    @Override
+    protected void init() {
+
+<span class="nc" id="L34">    }</span>
+
+    @Override
+    protected void destroy() {
+
+<span class="nc" id="L39">    }</span>
+
+    /**
+     * Function that is used to communicate to dependency manager the list of
+     * known implementations for services inside a container
+     *
+     *
+     * @return An array containing all the CLASS objects that will be
+     *         instantiated in order to get an fully working implementation
+     *         Object
+     */
+    @Override
+    public Object[] getImplementations() {
+<span class="nc" id="L52">        Object[] res = { DeviceManagerImpl.class };</span>
+<span class="nc" id="L53">        return res;</span>
+    }
+
+    /**
+     * Function that is called when configuration of the dependencies is
+     * required.
+     *
+     * @param c
+     *            dependency manager Component object, used for configuring the
+     *            dependencies exported and imported
+     * @param imp
+     *            Implementation class that is being configured, needed as long
+     *            as the same routine can configure multiple implementations
+     * @param containerName
+     *            The containerName being configured, this allow also optional
+     *            per-container different behavior if needed, usually should not
+     *            be the case though.
+     */
+    @Override
+    public void configureInstance(Component c, Object imp, String containerName) {
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (imp.equals(DeviceManagerImpl.class)) {</span>
+            // export the service
+            // XXX - TODO merge with existing APIs
+<span class="nc" id="L76">            Dictionary&lt;String, String&gt; props = new Hashtable&lt;String, String&gt;();</span>
+<span class="nc" id="L77">            props.put(&quot;salListenerName&quot;, &quot;devicemanager&quot;);</span>
+
+<span class="nc" id="L79">            c.setInterface(</span>
+<span class="nc" id="L80">                    new String[] { IDeviceService.class.getName(),</span>
+<span class="nc" id="L81">                            IfIptoHost.class.getName(),</span>
+<span class="nc" id="L82">                            IListenDataPacket.class.getName(),</span>
+<span class="nc" id="L83">                            ITopologyManagerAware.class.getName() }, props);</span>
+
+<span class="nc" id="L85">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L86">                    .setService(ISwitchManager.class)</span>
+<span class="nc" id="L87">                    .setCallbacks(&quot;setSwitchManager&quot;, &quot;unsetSwitchManager&quot;)</span>
+<span class="nc" id="L88">                    .setRequired(false));</span>
+
+<span class="nc" id="L90">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L91">                    .setService(IDataPacketService.class)</span>
+<span class="nc" id="L92">                    .setCallbacks(&quot;setDataPacketService&quot;,</span>
+<span class="nc" id="L93">                            &quot;unsetDataPacketService&quot;).setRequired(true));</span>
+
+<span class="nc" id="L95">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L96">                    .setService(IfNewHostNotify.class)</span>
+<span class="nc" id="L97">                    .setCallbacks(&quot;setNewHostNotify&quot;,</span>
+<span class="nc" id="L98">                            &quot;unsetNewHostNotify&quot;).setRequired(false));</span>
+
+            // c.add(createContainerServiceDependency(containerName).setService(
+            // IClusterContainerServices.class).setCallbacks(
+            // &quot;setClusterContainerService&quot;,
+            // &quot;unsetClusterContainerService&quot;).setRequired(true));
+<span class="nc" id="L104">            c.add(createContainerServiceDependency(containerName)</span>
+<span class="nc" id="L105">                    .setService(ITopologyManager.class)</span>
+<span class="nc" id="L106">                    .setCallbacks(&quot;setTopologyManager&quot;, &quot;unsetTopologyManager&quot;)</span>
+<span class="nc" id="L107">                    .setRequired(false));</span>
+        }
+<span class="nc" id="L109">    }</span>
+
+    /**
+     * Method which tells how many Global implementations are supported by the
+     * bundle. This way we can tune the number of components created. This
+     * components will be created ONLY at the time of bundle startup and will be
+     * destroyed only at time of bundle destruction, this is the major
+     * difference with the implementation retrieved via getImplementations where
+     * all of them are assumed to be in a container !
+     *
+     *
+     * @return The list of implementations the bundle will support, in Global
+     *         version
+     */
+    @Override
+    protected Object[] getGlobalImplementations() {
+<span class="nc" id="L125">        return null;</span>
+    }
+
+    /**
+     * Configure the dependency for a given instance Global
+     *
+     * @param c
+     *            Component assigned for this instance, this will be what will
+     *            be used for configuration
+     * @param imp
+     *            implementation to be configured
+     * @param containerName
+     *            container on which the configuration happens
+     */
+    @Override
+    protected void configureGlobalInstance(Component c, Object imp) {
+
+<span class="nc" id="L142">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

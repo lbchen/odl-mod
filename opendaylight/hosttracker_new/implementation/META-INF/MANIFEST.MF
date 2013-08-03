@@ -1,0 +1,24 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1375489208514
+Build-Jdk: 1.7.0_25
+Built-By: user
+Bundle-Activator: org.opendaylight.controller.hosttracker.internal.Activ
+ ator
+Bundle-ManifestVersion: 2
+Bundle-Name: hosttracker_new.implementation
+Bundle-SymbolicName: org.opendaylight.controller.hosttracker_new.impleme
+ ntation
+Bundle-Version: 0.4.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+Import-Package: javax.xml.bind,javax.xml.bind.annotation,org.apache.comm
+ ons.lang3.builder;version="[3.1,4)",org.apache.felix.dm;version="[3.0,4
+ )",org.eclipse.osgi.framework.console;version="[1.1,2)",org.opendayligh
+ t.controller.clustering.services,org.opendaylight.controller.hosttracke
+ r,org.opendaylight.controller.hosttracker.hostAware,org.opendaylight.co
+ ntroller.sal.core,org.opendaylight.controller.sal.packet,org.opendaylig
+ ht.controller.sal.packet.address,org.opendaylight.controller.sal.topolo
+ gy,org.opendaylight.controller.sal.utils,org.opendaylight.controller.sw
+ itchmanager,org.opendaylight.controller.topologymanager,org.osgi.framew
+ ork;version="[1.7,2)",org.osgi.service.component;version="[1.2,2)",org.
+ slf4j;version="[1.7,2)"
+Tool: Bnd-1.50.0

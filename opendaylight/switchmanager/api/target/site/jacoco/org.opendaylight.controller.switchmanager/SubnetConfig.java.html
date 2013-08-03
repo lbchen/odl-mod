@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SubnetConfig.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">switchmanager</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.switchmanager</a> &gt; <span class="el_source">SubnetConfig.java</span></div><h1>SubnetConfig.java</h1><pre class="source lang-java linenums">
+/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.switchmanager;
+
+import java.io.Serializable;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+
+import org.opendaylight.controller.sal.core.Node;
+import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.utils.GUIField;
+import org.opendaylight.controller.sal.utils.NetUtils;
+import org.opendaylight.controller.sal.utils.NodeConnectorCreator;
+
+/**
+ * The class represents a subnet configuration.
+ */
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.NONE)
+public class SubnetConfig implements Serializable {
+    //static fields are by default excluded by Gson parser
+    private static final long serialVersionUID = 1L;
+<span class="nc" id="L40">    private static final String prettyFields[] = { GUIField.NAME.toString(),</span>
+<span class="nc" id="L41">            GUIField.GATEWAYIP.toString(), GUIField.NODEPORTS.toString() };</span>
+
+    // Order matters: JSP file expects following fields in the
+    // following order
+    @XmlAttribute
+    private String name;
+    @XmlAttribute
+    private String subnet; // A.B.C.D/MM  Where A.B.C.D is the Default
+                           // Gateway IP (L3) or ARP Querier IP (L2
+    @XmlElement
+    private List&lt;String&gt; nodePorts; // datapath ID/port list:
+                                    // xx:xx:xx:xx:xx:xx:xx:xx/a,b,c-m,r-t,y
+
+<span class="nc" id="L54">    public SubnetConfig() {</span>
+<span class="nc" id="L55">    }</span>
+
+<span class="nc" id="L57">    public SubnetConfig(String desc, String sub, List&lt;String&gt; sp) {</span>
+<span class="nc" id="L58">        name = desc;</span>
+<span class="nc" id="L59">        subnet = sub;</span>
+<span class="nc" id="L60">        nodePorts = sp;</span>
+<span class="nc" id="L61">    }</span>
+
+    public String getName() {
+<span class="nc" id="L64">        return name;</span>
+    }
+
+    public List&lt;String&gt; getNodePorts() {
+<span class="nc" id="L68">        return nodePorts;</span>
+    }
+
+    public String getSubnet() {
+<span class="nc" id="L72">        return subnet;</span>
+    }
+
+    public InetAddress getIPnum() {
+<span class="nc" id="L76">        InetAddress ip = null;</span>
+        try {
+<span class="nc" id="L78">            ip = InetAddress.getByName(subnet.split(&quot;/&quot;)[0]);</span>
+<span class="nc" id="L79">        } catch (UnknownHostException e1) {</span>
+<span class="nc" id="L80">            return null;</span>
+        }
+<span class="nc" id="L82">        return ip;</span>
+    }
+
+    public Short getIPMaskLen() {
+<span class="nc" id="L86">        Short maskLen = 0;</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        if (hasValidIP()) {</span>
+<span class="nc" id="L88">            String[] s = subnet.split(&quot;/&quot;);</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">            maskLen = (s.length == 2) ? Short.valueOf(s[1]) : 32;</span>
+        }
+<span class="nc" id="L91">        return maskLen;</span>
+    }
+
+    private Set&lt;Short&gt; getPortList(String ports) {
+        /*
+         * example:
+         *     ports = &quot;1,3,5-12&quot;
+         *     elemArray = [&quot;1&quot; &quot;3&quot; &quot;5-12&quot;]
+         *     elem[2] = &quot;5-12&quot; --&gt; limits = [&quot;5&quot; &quot;12&quot;]
+         *     portList = [1 3 5 6 7 8 9 10 11 12]
+         */
+<span class="nc" id="L102">        Set&lt;Short&gt; portList = new HashSet&lt;Short&gt;();</span>
+<span class="nc" id="L103">        String[] elemArray = ports.split(&quot;,&quot;);</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        for (String elem : elemArray) {</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">            if (elem.contains(&quot;-&quot;)) {</span>
+<span class="nc" id="L106">                String[] limits = elem.split(&quot;-&quot;);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">                for (short j = Short.valueOf(limits[0]); j &lt;= Short</span>
+<span class="nc" id="L108">                        .valueOf(limits[1]); j++) {</span>
+<span class="nc" id="L109">                    portList.add(Short.valueOf(j));</span>
+                }
+<span class="nc" id="L111">            } else {</span>
+<span class="nc" id="L112">                portList.add(Short.valueOf(elem));</span>
+            }
+        }
+<span class="nc" id="L115">        return portList;</span>
+    }
+
+    private boolean hasValidIP() {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (subnet != null) {</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">            if (NetUtils.isIPv4AddressValid(subnet)) {</span>
+<span class="nc" id="L121">                return true;</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">            } else if (NetUtils.isIPv6AddressValid(subnet)) {</span>
+<span class="nc" id="L123">                return true;</span>
+            }
+        }
+<span class="nc" id="L126">        return false;</span>
+    }
+
+    private boolean hasValidPorts() {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        for (String portSet : nodePorts) {</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">            if (!portSet.contains(&quot;/&quot;)) {</span>
+<span class="nc" id="L132">                return false;</span>
+            }
+        }
+<span class="nc" id="L135">        return true;</span>
+    }
+
+    public boolean isValidSwitchPort(String sp) {
+<span class="nc" id="L139">        return sp.contains(&quot;/&quot;);</span>
+    }
+
+    public boolean isValidConfig() {
+<span class="nc bnc" id="L143" title="All 4 branches missed.">        return hasValidIP() &amp;&amp; hasValidPorts();</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L148">        return name.hashCode();</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        /*
+         * Configuration will be stored in collection only if it is valid
+         * Hence we don't check here for uninitialized fields
+         */
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L158">            return true;</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L160">            return false;</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        if (getClass() != obj.getClass())</span>
+<span class="nc" id="L162">            return false;</span>
+<span class="nc" id="L163">        SubnetConfig that = (SubnetConfig) obj;</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        if (this.subnet.equals(that.subnet)) {</span>
+<span class="nc" id="L165">            return true;</span>
+        }
+<span class="nc" id="L167">        return false;</span>
+    }
+
+    public static List&lt;String&gt; getGuiFieldsNames() {
+<span class="nc" id="L171">        List&lt;String&gt; fieldList = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        for (String str : prettyFields) {</span>
+<span class="nc" id="L173">            fieldList.add(str);</span>
+        }
+<span class="nc" id="L175">        return fieldList;</span>
+    }
+
+    //Utility method useful for adding to a passed Set all the
+    //NodeConnectors learnt from a string
+    private void getNodeConnectorsFromString(String codedNodeConnectors,
+            Set&lt;NodeConnector&gt; sp) {
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        if (codedNodeConnectors == null) {</span>
+<span class="nc" id="L183">            return;</span>
+        }
+<span class="nc bnc" id="L185" title="All 2 branches missed.">        if (sp == null) {</span>
+<span class="nc" id="L186">            return;</span>
+        }
+        // codedNodeConnectors = xx:xx:xx:xx:xx:xx:xx:xx/a,b,c-m,r-t,y
+<span class="nc" id="L189">        String pieces[] = codedNodeConnectors.split(&quot;/&quot;);</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        for (Short port : getPortList(pieces[1])) {</span>
+<span class="nc" id="L191">            Node n = Node.fromString(pieces[0]);</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">            if (n == null) {</span>
+<span class="nc" id="L193">                continue;</span>
+            }
+<span class="nc" id="L195">            NodeConnector p = NodeConnectorCreator.createOFNodeConnector(port,</span>
+<span class="nc" id="L196">                    n);</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">            if (p == null) {</span>
+<span class="nc" id="L198">                continue;</span>
+            }
+<span class="nc" id="L200">            sp.add(p);</span>
+        }
+<span class="nc" id="L202">    }</span>
+
+    public Set&lt;NodeConnector&gt; getSubnetNodeConnectors() {
+<span class="nc" id="L205">        Set&lt;NodeConnector&gt; sp = new HashSet&lt;NodeConnector&gt;();</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        if (isGlobal())</span>
+<span class="nc" id="L207">            return sp;</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">        for (String str : nodePorts) {</span>
+<span class="nc" id="L209">            getNodeConnectorsFromString(str, sp);</span>
+        }
+<span class="nc" id="L211">        return sp;</span>
+    }
+
+    public Set&lt;NodeConnector&gt; getNodeConnectors(String codedNodeConnectors) {
+        // codedNodeConnectors = xx:xx:xx:xx:xx:xx:xx:xx/a,b,c-m,r-t,y
+<span class="nc" id="L216">        Set&lt;NodeConnector&gt; sp = new HashSet&lt;NodeConnector&gt;();</span>
+<span class="nc" id="L217">        getNodeConnectorsFromString(codedNodeConnectors, sp);</span>
+<span class="nc" id="L218">        return sp;</span>
+    }
+
+    public boolean isGlobal() {
+        // If no ports are specified to be part of the domain, then it's a global domain IP
+<span class="nc bnc" id="L223" title="All 4 branches missed.">        return (nodePorts == null || nodePorts.isEmpty());</span>
+    }
+
+    public void addNodeConnectors(String sp) {
+<span class="nc" id="L227">        nodePorts.add(sp);</span>
+<span class="nc" id="L228">    }</span>
+
+    public void removeNodeConnectors(String sp) {
+<span class="nc" id="L231">        nodePorts.remove(sp);</span>
+<span class="nc" id="L232">    }</span>
+
+    public String toString() {
+<span class="nc" id="L235">        return (&quot;Subnet Config [Description=&quot; + name + &quot; Subnet=&quot; + subnet</span>
+<span class="nc" id="L236">                + &quot; NodeConnectors=&quot; + nodePorts + &quot;]&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

@@ -1,0 +1,1621 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api-docs title="Statistics REST API">
+  <data>
+    <schema namespace="" namespaceId="ns0" file="ns0.xsd">
+      <types>
+        <type name="action" id="org.opendaylight.controller.sal.action.Action" package="org.opendaylight.controller.sal.action">
+          <groups>
+            <group>Action</group>
+          </groups>
+        </type>
+        <type name="controller" id="org.opendaylight.controller.sal.action.Controller" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>Controller</group>
+          </groups>
+        </type>
+        <type name="drop" id="org.opendaylight.controller.sal.action.Drop" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>Drop</group>
+          </groups>
+        </type>
+        <type name="flood" id="org.opendaylight.controller.sal.action.Flood" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>Flood</group>
+          </groups>
+        </type>
+        <type name="floodAll" id="org.opendaylight.controller.sal.action.FloodAll" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>FloodAll</group>
+          </groups>
+        </type>
+        <type name="hwPath" id="org.opendaylight.controller.sal.action.HwPath" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>HwPath</group>
+          </groups>
+        </type>
+        <type name="loopback" id="org.opendaylight.controller.sal.action.Loopback" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>Loopback</group>
+          </groups>
+        </type>
+        <type name="output" id="org.opendaylight.controller.sal.action.Output" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>Output</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="port">
+              <choice name="port" namespace="" typeNamespace="" typeName="nodeConnector" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="popVlan" id="org.opendaylight.controller.sal.action.PopVlan" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>PopVlan</group>
+          </groups>
+        </type>
+        <type name="pushVlan" id="org.opendaylight.controller.sal.action.PushVlan" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>PushVlan</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="VlanHeader">
+              <choice name="VlanHeader" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setDlDst" id="org.opendaylight.controller.sal.action.SetDlDst" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetDlDst</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="address">
+              <choice name="address" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setDlSrc" id="org.opendaylight.controller.sal.action.SetDlSrc" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetDlSrc</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="address">
+              <choice name="address" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setDlType" id="org.opendaylight.controller.sal.action.SetDlType" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetDlType</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="dlType">
+              <choice name="dlType" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setNwDst" id="org.opendaylight.controller.sal.action.SetNwDst" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetNwDst</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="address">
+              <choice name="address" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setNwSrc" id="org.opendaylight.controller.sal.action.SetNwSrc" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetNwSrc</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="address">
+              <choice name="address" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setNwTos" id="org.opendaylight.controller.sal.action.SetNwTos" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetNwTos</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="tos">
+              <choice name="tos" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setTpDst" id="org.opendaylight.controller.sal.action.SetTpDst" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetTpDst</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="port">
+              <choice name="port" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setTpSrc" id="org.opendaylight.controller.sal.action.SetTpSrc" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetTpSrc</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="port">
+              <choice name="port" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setVlanCfi" id="org.opendaylight.controller.sal.action.SetVlanCfi" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetVlanCfi</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="cfi">
+              <choice name="cfi" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setVlanId" id="org.opendaylight.controller.sal.action.SetVlanId" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetVlanId</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="vlanId">
+              <choice name="vlanId" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="setVlanPcp" id="org.opendaylight.controller.sal.action.SetVlanPcp" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SetVlanPcp</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="pcp">
+              <choice name="pcp" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="swPath" id="org.opendaylight.controller.sal.action.SwPath" package="org.opendaylight.controller.sal.action" extendsType="org.opendaylight.controller.sal.action.Action">
+          <groups>
+            <group>SwPath</group>
+          </groups>
+        </type>
+        <type name="node" id="org.opendaylight.controller.sal.core.Node" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>Node</group>
+          </groups>
+          <attributes>
+            <attribute name="id" jsonName="id" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+            <attribute name="type" jsonName="type" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+          </attributes>
+        </type>
+        <type name="nodeConnector" id="org.opendaylight.controller.sal.core.NodeConnector" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>NodeConnector</group>
+          </groups>
+          <attributes>
+            <attribute name="id" jsonName="id" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+            <attribute name="type" jsonName="type" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+          </attributes>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="node">
+              <choice name="node" namespace="" typeNamespace="" typeName="node" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="nodeTable" id="org.opendaylight.controller.sal.core.NodeTable" package="org.opendaylight.controller.sal.core">
+          <groups>
+            <group>NodeTable</group>
+          </groups>
+          <attributes>
+            <attribute name="id" jsonName="id" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string">
+              <![CDATA[(no documentation provided)]]>
+            </attribute>
+          </attributes>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="node">
+              <choice name="node" namespace="" typeNamespace="" typeName="node" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="flow" id="org.opendaylight.controller.sal.flowprogrammer.Flow" package="org.opendaylight.controller.sal.flowprogrammer">
+          <groups>
+            <group>Flow</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="priority">
+              <choice name="priority" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="short"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="idleTimeout">
+              <choice name="idleTimeout" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="short"/>
+            </element>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="actions">
+              <choice name="actions" namespace="" typeNamespace="" typeName="action" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="hardTimeout">
+              <choice name="hardTimeout" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="short"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="id">
+              <choice name="id" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="0" maxOccurs="1" jsonName="match">
+              <choice name="match" namespace="" typeNamespace="" typeName="match" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="match" id="org.opendaylight.controller.sal.match.Match" package="org.opendaylight.controller.sal.match">
+          <groups>
+            <group>Match</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="matchField">
+              <choice name="matchField" namespace="" typeNamespace="" typeName="matchField" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="matchField" id="org.opendaylight.controller.sal.match.MatchField" package="org.opendaylight.controller.sal.match">
+          <groups>
+            <group>MatchField</group>
+          </groups>
+        </type>
+        <type name="flowOnNode" id="org.opendaylight.controller.sal.reader.FlowOnNode" package="org.opendaylight.controller.sal.reader">
+          <groups>
+            <group>FlowOnNode</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="flow">
+              <choice name="flow" namespace="" typeNamespace="" typeName="flow" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="packetCount">
+              <choice name="packetCount" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="durationNanoseconds">
+              <choice name="durationNanoseconds" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="byteCount">
+              <choice name="byteCount" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="tableId">
+              <choice name="tableId" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="byte"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="durationSeconds">
+              <choice name="durationSeconds" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+          </elements>
+        </type>
+        <type name="nodeConnectorStatistics" id="org.opendaylight.controller.sal.reader.NodeConnectorStatistics" package="org.opendaylight.controller.sal.reader">
+          <groups>
+            <group>NodeConnectorStatistics</group>
+          </groups>
+          <elements>
+            <element minOccurs="1" maxOccurs="1" jsonName="receiveOverRunError">
+              <choice name="receiveOverRunError" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="transmitErrors">
+              <choice name="transmitErrors" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="0" maxOccurs="1" jsonName="nodeConnector">
+              <choice name="nodeConnector" namespace="" typeNamespace="" typeName="nodeConnector" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="receiveFrameError">
+              <choice name="receiveFrameError" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="transmitPackets">
+              <choice name="transmitPackets" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="receiveBytes">
+              <choice name="receiveBytes" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="receiveCrcError">
+              <choice name="receiveCrcError" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="collisionCount">
+              <choice name="collisionCount" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="receiveDrops">
+              <choice name="receiveDrops" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="transmitBytes">
+              <choice name="transmitBytes" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="transmitDrops">
+              <choice name="transmitDrops" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="receiveErrors">
+              <choice name="receiveErrors" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="receivePackets">
+              <choice name="receivePackets" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+          </elements>
+        </type>
+        <type name="nodeTableStatistics" id="org.opendaylight.controller.sal.reader.NodeTableStatistics" package="org.opendaylight.controller.sal.reader">
+          <groups>
+            <group>NodeTableStatistics</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="name">
+              <choice name="name" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="string"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="matchedCount">
+              <choice name="matchedCount" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+            <element minOccurs="0" maxOccurs="1" jsonName="nodeTable">
+              <choice name="nodeTable" namespace="" typeNamespace="" typeName="nodeTable" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="activeCount">
+              <choice name="activeCount" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="int"/>
+            </element>
+            <element minOccurs="1" maxOccurs="1" jsonName="lookupCount">
+              <choice name="lookupCount" namespace="" typeNamespace="http://www.w3.org/2001/XMLSchema" typeName="long"/>
+            </element>
+          </elements>
+        </type>
+        <type name="allFlowStatistics" id="org.opendaylight.controller.statistics.northbound.AllFlowStatistics" package="org.opendaylight.controller.statistics.northbound">
+          <groups>
+            <group>AllFlowStatistics</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="flowStatistics">
+              <choice name="flowStatistics" namespace="" typeNamespace="" typeName="flowStatistics" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="allPortStatistics" id="org.opendaylight.controller.statistics.northbound.AllPortStatistics" package="org.opendaylight.controller.statistics.northbound">
+          <groups>
+            <group>AllPortStatistics</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="portStatistics">
+              <choice name="portStatistics" namespace="" typeNamespace="" typeName="portStatistics" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="allTableStatistics" id="org.opendaylight.controller.statistics.northbound.AllTableStatistics" package="org.opendaylight.controller.statistics.northbound">
+          <groups>
+            <group>AllTableStatistics</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="tableStatistics">
+              <choice name="tableStatistics" namespace="" typeNamespace="" typeName="tableStatistics" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="flowStatistics" id="org.opendaylight.controller.statistics.northbound.FlowStatistics" package="org.opendaylight.controller.statistics.northbound">
+          <groups>
+            <group>FlowStatistics</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="node">
+              <choice name="node" namespace="" typeNamespace="" typeName="node" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="flowStat">
+              <choice name="flowStat" namespace="" typeNamespace="" typeName="flowOnNode" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="portStatistics" id="org.opendaylight.controller.statistics.northbound.PortStatistics" package="org.opendaylight.controller.statistics.northbound">
+          <groups>
+            <group>PortStatistics</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="node">
+              <choice name="node" namespace="" typeNamespace="" typeName="node" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="portStat">
+              <choice name="portStat" namespace="" typeNamespace="" typeName="nodeConnectorStatistics" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+        <type name="tableStatistics" id="org.opendaylight.controller.statistics.northbound.TableStatistics" package="org.opendaylight.controller.statistics.northbound">
+          <groups>
+            <group>TableStatistics</group>
+          </groups>
+          <elements>
+            <element minOccurs="0" maxOccurs="1" jsonName="node">
+              <choice name="node" namespace="" typeNamespace="" typeName="node" typeSchemaId="ns0"/>
+            </element>
+            <element minOccurs="0" maxOccurs="unbounded" jsonName="tableStat">
+              <choice name="tableStat" namespace="" typeNamespace="" typeName="nodeTableStatistics" typeSchemaId="ns0"/>
+            </element>
+          </elements>
+        </type>
+      </types>
+      <elements>
+        <element name="action" type="org.opendaylight.controller.sal.action.Action" typeName="action" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Action</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<action />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="controller" type="org.opendaylight.controller.sal.action.Controller" typeName="controller" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Controller</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<controller />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="drop" type="org.opendaylight.controller.sal.action.Drop" typeName="drop" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Drop</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<drop />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="flood" type="org.opendaylight.controller.sal.action.Flood" typeName="flood" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Flood</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<flood />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="floodAll" type="org.opendaylight.controller.sal.action.FloodAll" typeName="floodAll" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>FloodAll</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<floodAll />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="hwPath" type="org.opendaylight.controller.sal.action.HwPath" typeName="hwPath" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>HwPath</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<hwPath />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="loopback" type="org.opendaylight.controller.sal.action.Loopback" typeName="loopback" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Loopback</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<loopback />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="output" type="org.opendaylight.controller.sal.action.Output" typeName="output" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Output</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<output>
+  <port id="..." type="...">
+    <node id="..." type="..." />
+  </port>
+</output>]]></examplexml>
+          <examplejson><![CDATA[{
+  "port" : {
+    "id" : "...",
+    "type" : "...",
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    }
+  }
+}]]></examplejson>
+        </element>
+        <element name="popVlan" type="org.opendaylight.controller.sal.action.PopVlan" typeName="popVlan" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>PopVlan</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<popVlan />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="pushVlan" type="org.opendaylight.controller.sal.action.PushVlan" typeName="pushVlan" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>PushVlan</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<pushVlan>
+  <VlanHeader>...</VlanHeader>
+</pushVlan>]]></examplexml>
+          <examplejson><![CDATA[{
+  "VlanHeader" : ...
+}]]></examplejson>
+        </element>
+        <element name="setDlDst" type="org.opendaylight.controller.sal.action.SetDlDst" typeName="setDlDst" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetDlDst</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setDlDst>
+  <address>...</address>
+</setDlDst>]]></examplexml>
+          <examplejson><![CDATA[{
+  "address" : "..."
+}]]></examplejson>
+        </element>
+        <element name="setDlSrc" type="org.opendaylight.controller.sal.action.SetDlSrc" typeName="setDlSrc" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetDlSrc</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setDlSrc>
+  <address>...</address>
+</setDlSrc>]]></examplexml>
+          <examplejson><![CDATA[{
+  "address" : "..."
+}]]></examplejson>
+        </element>
+        <element name="setDlType" type="org.opendaylight.controller.sal.action.SetDlType" typeName="setDlType" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetDlType</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setDlType>
+  <dlType>...</dlType>
+</setDlType>]]></examplexml>
+          <examplejson><![CDATA[{
+  "dlType" : ...
+}]]></examplejson>
+        </element>
+        <element name="setNwDst" type="org.opendaylight.controller.sal.action.SetNwDst" typeName="setNwDst" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetNwDst</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setNwDst>
+  <address>...</address>
+</setNwDst>]]></examplexml>
+          <examplejson><![CDATA[{
+  "address" : "..."
+}]]></examplejson>
+        </element>
+        <element name="setNwSrc" type="org.opendaylight.controller.sal.action.SetNwSrc" typeName="setNwSrc" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetNwSrc</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setNwSrc>
+  <address>...</address>
+</setNwSrc>]]></examplexml>
+          <examplejson><![CDATA[{
+  "address" : "..."
+}]]></examplejson>
+        </element>
+        <element name="setNwTos" type="org.opendaylight.controller.sal.action.SetNwTos" typeName="setNwTos" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetNwTos</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setNwTos>
+  <tos>...</tos>
+</setNwTos>]]></examplexml>
+          <examplejson><![CDATA[{
+  "tos" : ...
+}]]></examplejson>
+        </element>
+        <element name="setTpDst" type="org.opendaylight.controller.sal.action.SetTpDst" typeName="setTpDst" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetTpDst</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setTpDst>
+  <port>...</port>
+</setTpDst>]]></examplexml>
+          <examplejson><![CDATA[{
+  "port" : ...
+}]]></examplejson>
+        </element>
+        <element name="setTpSrc" type="org.opendaylight.controller.sal.action.SetTpSrc" typeName="setTpSrc" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetTpSrc</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setTpSrc>
+  <port>...</port>
+</setTpSrc>]]></examplexml>
+          <examplejson><![CDATA[{
+  "port" : ...
+}]]></examplejson>
+        </element>
+        <element name="setVlanCfi" type="org.opendaylight.controller.sal.action.SetVlanCfi" typeName="setVlanCfi" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetVlanCfi</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setVlanCfi>
+  <cfi>...</cfi>
+</setVlanCfi>]]></examplexml>
+          <examplejson><![CDATA[{
+  "cfi" : ...
+}]]></examplejson>
+        </element>
+        <element name="setVlanId" type="org.opendaylight.controller.sal.action.SetVlanId" typeName="setVlanId" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetVlanId</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setVlanId>
+  <vlanId>...</vlanId>
+</setVlanId>]]></examplexml>
+          <examplejson><![CDATA[{
+  "vlanId" : ...
+}]]></examplejson>
+        </element>
+        <element name="setVlanPcp" type="org.opendaylight.controller.sal.action.SetVlanPcp" typeName="setVlanPcp" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SetVlanPcp</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<setVlanPcp>
+  <pcp>...</pcp>
+</setVlanPcp>]]></examplexml>
+          <examplejson><![CDATA[{
+  "pcp" : ...
+}]]></examplejson>
+        </element>
+        <element name="swPath" type="org.opendaylight.controller.sal.action.SwPath" typeName="swPath" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>SwPath</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<swPath />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="node" type="org.opendaylight.controller.sal.core.Node" typeName="node" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Node</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<node id="..." type="..." />]]></examplexml>
+          <examplejson><![CDATA[{
+  "id" : "...",
+  "type" : "..."
+}]]></examplejson>
+        </element>
+        <element name="nodeConnector" type="org.opendaylight.controller.sal.core.NodeConnector" typeName="nodeConnector" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>NodeConnector</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeConnector id="..." type="...">
+  <node id="..." type="..." />
+</nodeConnector>]]></examplexml>
+          <examplejson><![CDATA[{
+  "id" : "...",
+  "type" : "...",
+  "node" : {
+    "id" : "...",
+    "type" : "..."
+  }
+}]]></examplejson>
+        </element>
+        <element name="nodeTable" type="org.opendaylight.controller.sal.core.NodeTable" typeName="nodeTable" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>NodeTable</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeTable id="...">
+  <node id="..." type="..." />
+</nodeTable>]]></examplexml>
+          <examplejson><![CDATA[{
+  "id" : "...",
+  "node" : {
+    "id" : "...",
+    "type" : "..."
+  }
+}]]></examplejson>
+        </element>
+        <element name="flow" type="org.opendaylight.controller.sal.flowprogrammer.Flow" typeName="flow" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Flow</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<flow>
+  <priority>...</priority>
+  <idleTimeout>...</idleTimeout>
+  <actions />
+  <actions>
+    <!--...-->
+  </actions>
+  <!--...more "actions" elements...-->
+  <hardTimeout>...</hardTimeout>
+  <id>...</id>
+  <match>
+    <matchField />
+    <matchField>
+      <!--...-->
+    </matchField>
+    <!--...more "matchField" elements...-->
+  </match>
+</flow>]]></examplexml>
+          <examplejson><![CDATA[{
+  "priority" : ...,
+  "idleTimeout" : ...,
+  "actions" : [ { }, ... ],
+  "hardTimeout" : ...,
+  "id" : ...,
+  "match" : {
+    "matchField" : [ { }, ... ]
+  }
+}]]></examplejson>
+        </element>
+        <element name="match" type="org.opendaylight.controller.sal.match.Match" typeName="match" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>Match</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<match>
+  <matchField />
+  <matchField>
+    <!--...-->
+  </matchField>
+  <!--...more "matchField" elements...-->
+</match>]]></examplexml>
+          <examplejson><![CDATA[{
+  "matchField" : [ { }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="matchField" type="org.opendaylight.controller.sal.match.MatchField" typeName="matchField" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>MatchField</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<matchField />]]></examplexml>
+          <examplejson><![CDATA[{ }]]></examplejson>
+        </element>
+        <element name="FlowStat" type="org.opendaylight.controller.sal.reader.FlowOnNode" typeName="flowOnNode" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>FlowOnNode</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<FlowStat>
+  <flow>
+    <priority>...</priority>
+    <idleTimeout>...</idleTimeout>
+    <actions />
+    <actions>
+      <!--...-->
+    </actions>
+    <!--...more "actions" elements...-->
+    <hardTimeout>...</hardTimeout>
+    <id>...</id>
+    <match>
+      <matchField />
+      <matchField>
+        <!--...-->
+      </matchField>
+      <!--...more "matchField" elements...-->
+    </match>
+  </flow>
+  <packetCount>...</packetCount>
+  <durationNanoseconds>...</durationNanoseconds>
+  <byteCount>...</byteCount>
+  <tableId>...</tableId>
+  <durationSeconds>...</durationSeconds>
+</FlowStat>]]></examplexml>
+          <examplejson><![CDATA[{
+  "flow" : {
+    "priority" : ...,
+    "idleTimeout" : ...,
+    "actions" : [ { }, ... ],
+    "hardTimeout" : ...,
+    "id" : ...,
+    "match" : {
+      "matchField" : [ { }, ... ]
+    }
+  },
+  "packetCount" : ...,
+  "durationNanoseconds" : ...,
+  "byteCount" : ...,
+  "tableId" : ...,
+  "durationSeconds" : ...
+}]]></examplejson>
+        </element>
+        <element name="nodeConnectorStatistics" type="org.opendaylight.controller.sal.reader.NodeConnectorStatistics" typeName="nodeConnectorStatistics" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>NodeConnectorStatistics</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeConnectorStatistics>
+  <receiveOverRunError>...</receiveOverRunError>
+  <transmitErrors>...</transmitErrors>
+  <nodeConnector id="..." type="...">
+    <node id="..." type="..." />
+  </nodeConnector>
+  <receiveFrameError>...</receiveFrameError>
+  <transmitPackets>...</transmitPackets>
+  <receiveBytes>...</receiveBytes>
+  <receiveCrcError>...</receiveCrcError>
+  <collisionCount>...</collisionCount>
+  <receiveDrops>...</receiveDrops>
+  <transmitBytes>...</transmitBytes>
+  <transmitDrops>...</transmitDrops>
+  <receiveErrors>...</receiveErrors>
+  <receivePackets>...</receivePackets>
+</nodeConnectorStatistics>]]></examplexml>
+          <examplejson><![CDATA[{
+  "receiveOverRunError" : ...,
+  "transmitErrors" : ...,
+  "nodeConnector" : {
+    "id" : "...",
+    "type" : "...",
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    }
+  },
+  "receiveFrameError" : ...,
+  "transmitPackets" : ...,
+  "receiveBytes" : ...,
+  "receiveCrcError" : ...,
+  "collisionCount" : ...,
+  "receiveDrops" : ...,
+  "transmitBytes" : ...,
+  "transmitDrops" : ...,
+  "receiveErrors" : ...,
+  "receivePackets" : ...
+}]]></examplejson>
+        </element>
+        <element name="nodeTableStatistics" type="org.opendaylight.controller.sal.reader.NodeTableStatistics" typeName="nodeTableStatistics" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>NodeTableStatistics</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<nodeTableStatistics>
+  <name>...</name>
+  <matchedCount>...</matchedCount>
+  <nodeTable id="...">
+    <node id="..." type="..." />
+  </nodeTable>
+  <activeCount>...</activeCount>
+  <lookupCount>...</lookupCount>
+</nodeTableStatistics>]]></examplexml>
+          <examplejson><![CDATA[{
+  "name" : "...",
+  "matchedCount" : ...,
+  "nodeTable" : {
+    "id" : "...",
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    }
+  },
+  "activeCount" : ...,
+  "lookupCount" : ...
+}]]></examplejson>
+        </element>
+        <element name="allFlowStatistics" type="org.opendaylight.controller.statistics.northbound.AllFlowStatistics" typeName="allFlowStatistics" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>AllFlowStatistics</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<allFlowStatistics>
+  <flowStatistics>
+    <node id="..." type="..." />
+    <flowStat>
+      <flow>
+        <priority>...</priority>
+        <idleTimeout>...</idleTimeout>
+        <actions />
+        <actions>
+          <!--...-->
+        </actions>
+        <!--...more "actions" elements...-->
+        <hardTimeout>...</hardTimeout>
+        <id>...</id>
+        <match>
+          <matchField />
+          <matchField>
+            <!--...-->
+          </matchField>
+          <!--...more "matchField" elements...-->
+        </match>
+      </flow>
+      <packetCount>...</packetCount>
+      <durationNanoseconds>...</durationNanoseconds>
+      <byteCount>...</byteCount>
+      <tableId>...</tableId>
+      <durationSeconds>...</durationSeconds>
+    </flowStat>
+    <flowStat>
+      <!--...-->
+    </flowStat>
+    <!--...more "flowStat" elements...-->
+  </flowStatistics>
+  <flowStatistics>
+    <!--...-->
+  </flowStatistics>
+  <!--...more "flowStatistics" elements...-->
+</allFlowStatistics>]]></examplexml>
+          <examplejson><![CDATA[{
+  "flowStatistics" : [ {
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    },
+    "flowStat" : [ {
+      "flow" : {
+        "priority" : ...,
+        "idleTimeout" : ...,
+        "actions" : [ { }, ... ],
+        "hardTimeout" : ...,
+        "id" : ...,
+        "match" : {
+          "matchField" : [ { }, ... ]
+        }
+      },
+      "packetCount" : ...,
+      "durationNanoseconds" : ...,
+      "byteCount" : ...,
+      "tableId" : ...,
+      "durationSeconds" : ...
+    }, ... ]
+  }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="allPortStatistics" type="org.opendaylight.controller.statistics.northbound.AllPortStatistics" typeName="allPortStatistics" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>AllPortStatistics</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<allPortStatistics>
+  <portStatistics>
+    <node id="..." type="..." />
+    <portStat>
+      <receiveOverRunError>...</receiveOverRunError>
+      <transmitErrors>...</transmitErrors>
+      <nodeConnector id="..." type="...">
+        <node id="..." type="..." />
+      </nodeConnector>
+      <receiveFrameError>...</receiveFrameError>
+      <transmitPackets>...</transmitPackets>
+      <receiveBytes>...</receiveBytes>
+      <receiveCrcError>...</receiveCrcError>
+      <collisionCount>...</collisionCount>
+      <receiveDrops>...</receiveDrops>
+      <transmitBytes>...</transmitBytes>
+      <transmitDrops>...</transmitDrops>
+      <receiveErrors>...</receiveErrors>
+      <receivePackets>...</receivePackets>
+    </portStat>
+    <portStat>
+      <!--...-->
+    </portStat>
+    <!--...more "portStat" elements...-->
+  </portStatistics>
+  <portStatistics>
+    <!--...-->
+  </portStatistics>
+  <!--...more "portStatistics" elements...-->
+</allPortStatistics>]]></examplexml>
+          <examplejson><![CDATA[{
+  "portStatistics" : [ {
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    },
+    "portStat" : [ {
+      "receiveOverRunError" : ...,
+      "transmitErrors" : ...,
+      "nodeConnector" : {
+        "id" : "...",
+        "type" : "...",
+        "node" : {
+          "id" : "...",
+          "type" : "..."
+        }
+      },
+      "receiveFrameError" : ...,
+      "transmitPackets" : ...,
+      "receiveBytes" : ...,
+      "receiveCrcError" : ...,
+      "collisionCount" : ...,
+      "receiveDrops" : ...,
+      "transmitBytes" : ...,
+      "transmitDrops" : ...,
+      "receiveErrors" : ...,
+      "receivePackets" : ...
+    }, ... ]
+  }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="allTableStatistics" type="org.opendaylight.controller.statistics.northbound.AllTableStatistics" typeName="allTableStatistics" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>AllTableStatistics</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<allTableStatistics>
+  <tableStatistics>
+    <node id="..." type="..." />
+    <tableStat>
+      <name>...</name>
+      <matchedCount>...</matchedCount>
+      <nodeTable id="...">
+        <node id="..." type="..." />
+      </nodeTable>
+      <activeCount>...</activeCount>
+      <lookupCount>...</lookupCount>
+    </tableStat>
+    <tableStat>
+      <!--...-->
+    </tableStat>
+    <!--...more "tableStat" elements...-->
+  </tableStatistics>
+  <tableStatistics>
+    <!--...-->
+  </tableStatistics>
+  <!--...more "tableStatistics" elements...-->
+</allTableStatistics>]]></examplexml>
+          <examplejson><![CDATA[{
+  "tableStatistics" : [ {
+    "node" : {
+      "id" : "...",
+      "type" : "..."
+    },
+    "tableStat" : [ {
+      "name" : "...",
+      "matchedCount" : ...,
+      "nodeTable" : {
+        "id" : "...",
+        "node" : {
+          "id" : "...",
+          "type" : "..."
+        }
+      },
+      "activeCount" : ...,
+      "lookupCount" : ...
+    }, ... ]
+  }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="flowStatistics" type="org.opendaylight.controller.statistics.northbound.FlowStatistics" typeName="flowStatistics" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>FlowStatistics</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<flowStatistics>
+  <node id="..." type="..." />
+  <flowStat>
+    <flow>
+      <priority>...</priority>
+      <idleTimeout>...</idleTimeout>
+      <actions />
+      <actions>
+        <!--...-->
+      </actions>
+      <!--...more "actions" elements...-->
+      <hardTimeout>...</hardTimeout>
+      <id>...</id>
+      <match>
+        <matchField />
+        <matchField>
+          <!--...-->
+        </matchField>
+        <!--...more "matchField" elements...-->
+      </match>
+    </flow>
+    <packetCount>...</packetCount>
+    <durationNanoseconds>...</durationNanoseconds>
+    <byteCount>...</byteCount>
+    <tableId>...</tableId>
+    <durationSeconds>...</durationSeconds>
+  </flowStat>
+  <flowStat>
+    <!--...-->
+  </flowStat>
+  <!--...more "flowStat" elements...-->
+</flowStatistics>]]></examplexml>
+          <examplejson><![CDATA[{
+  "node" : {
+    "id" : "...",
+    "type" : "..."
+  },
+  "flowStat" : [ {
+    "flow" : {
+      "priority" : ...,
+      "idleTimeout" : ...,
+      "actions" : [ { }, ... ],
+      "hardTimeout" : ...,
+      "id" : ...,
+      "match" : {
+        "matchField" : [ { }, ... ]
+      }
+    },
+    "packetCount" : ...,
+    "durationNanoseconds" : ...,
+    "byteCount" : ...,
+    "tableId" : ...,
+    "durationSeconds" : ...
+  }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="portStatistics" type="org.opendaylight.controller.statistics.northbound.PortStatistics" typeName="portStatistics" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>PortStatistics</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<portStatistics>
+  <node id="..." type="..." />
+  <portStat>
+    <receiveOverRunError>...</receiveOverRunError>
+    <transmitErrors>...</transmitErrors>
+    <nodeConnector id="..." type="...">
+      <node id="..." type="..." />
+    </nodeConnector>
+    <receiveFrameError>...</receiveFrameError>
+    <transmitPackets>...</transmitPackets>
+    <receiveBytes>...</receiveBytes>
+    <receiveCrcError>...</receiveCrcError>
+    <collisionCount>...</collisionCount>
+    <receiveDrops>...</receiveDrops>
+    <transmitBytes>...</transmitBytes>
+    <transmitDrops>...</transmitDrops>
+    <receiveErrors>...</receiveErrors>
+    <receivePackets>...</receivePackets>
+  </portStat>
+  <portStat>
+    <!--...-->
+  </portStat>
+  <!--...more "portStat" elements...-->
+</portStatistics>]]></examplexml>
+          <examplejson><![CDATA[{
+  "node" : {
+    "id" : "...",
+    "type" : "..."
+  },
+  "portStat" : [ {
+    "receiveOverRunError" : ...,
+    "transmitErrors" : ...,
+    "nodeConnector" : {
+      "id" : "...",
+      "type" : "...",
+      "node" : {
+        "id" : "...",
+        "type" : "..."
+      }
+    },
+    "receiveFrameError" : ...,
+    "transmitPackets" : ...,
+    "receiveBytes" : ...,
+    "receiveCrcError" : ...,
+    "collisionCount" : ...,
+    "receiveDrops" : ...,
+    "transmitBytes" : ...,
+    "transmitDrops" : ...,
+    "receiveErrors" : ...,
+    "receivePackets" : ...
+  }, ... ]
+}]]></examplejson>
+        </element>
+        <element name="tableStatistics" type="org.opendaylight.controller.statistics.northbound.TableStatistics" typeName="tableStatistics" typeNamespace="" typeSchemaId="ns0">
+          <groups>
+            <group>TableStatistics</group>
+          </groups>
+          <examplexml><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<tableStatistics>
+  <node id="..." type="..." />
+  <tableStat>
+    <name>...</name>
+    <matchedCount>...</matchedCount>
+    <nodeTable id="...">
+      <node id="..." type="..." />
+    </nodeTable>
+    <activeCount>...</activeCount>
+    <lookupCount>...</lookupCount>
+  </tableStat>
+  <tableStat>
+    <!--...-->
+  </tableStat>
+  <!--...more "tableStat" elements...-->
+</tableStatistics>]]></examplexml>
+          <examplejson><![CDATA[{
+  "node" : {
+    "id" : "...",
+    "type" : "..."
+  },
+  "tableStat" : [ {
+    "name" : "...",
+    "matchedCount" : ...,
+    "nodeTable" : {
+      "id" : "...",
+      "node" : {
+        "id" : "...",
+        "type" : "..."
+      }
+    },
+    "activeCount" : ...,
+    "lookupCount" : ...
+  }, ... ]
+}]]></examplejson>
+        </element>
+      </elements>
+      <groups>
+        <group>
+          <name>Action</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>AllFlowStatistics</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>AllPortStatistics</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>AllTableStatistics</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Controller</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Drop</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Flood</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>FloodAll</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Flow</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>FlowOnNode</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>FlowStatistics</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>HwPath</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Loopback</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Match</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>MatchField</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Node</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>NodeConnector</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>NodeConnectorStatistics</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>NodeTable</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>NodeTableStatistics</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>Output</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>PopVlan</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>PortStatistics</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>PushVlan</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetDlDst</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetDlSrc</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetDlType</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetNwDst</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetNwSrc</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetNwTos</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetTpDst</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetTpSrc</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetVlanCfi</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetVlanId</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SetVlanPcp</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>SwPath</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+        <group>
+          <name>TableStatistics</name>
+          <documentation><![CDATA[]]></documentation>
+        </group>
+      </groups>
+    </schema>
+  </data>
+  <soap>
+    <wsdls>
+    </wsdls>
+  </soap>
+  <rest baseAddress="http://localhost:8080/full" wadl="application.wadl">
+    <resources>
+      <resource name="/{containerName}/flowstats" subcontext="/controller/nb/v2/statistics">
+        <groups>
+          <group>StatisticsNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a list of all Flow Statistics from all the Nodes.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="allFlowStatistics" />
+            
+            <documentation><![CDATA[List of FlowStatistics from all the Nodes]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/portstats" subcontext="/controller/nb/v2/statistics">
+        <groups>
+          <group>StatisticsNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a list of all the Port Statistics across all the NodeConnectors
+on all the Nodes.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="allPortStatistics" />
+            
+            <documentation><![CDATA[List of all the Port Statistics across all the NodeConnectors on
+all the Nodes.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/tablestats" subcontext="/controller/nb/v2/statistics">
+        <groups>
+          <group>StatisticsNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a list of all the Table Statistics on all Nodes.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="tableStatistics" />
+            
+            <documentation><![CDATA[Returns a list of all the Table Statistics in a given Node.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/flowstats/{nodeType}/{nodeId}" subcontext="/controller/nb/v2/statistics">
+        <groups>
+          <group>StatisticsNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a list of Flow Statistics for a given Node.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <parameter name="nodeType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Type as specifid by Node class]]>
+          </parameter>
+          <parameter name="nodeId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Identifier]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="flowStatistics" />
+            
+            <documentation><![CDATA[List of Flow Statistics for a given Node.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/portstats/{nodeType}/{nodeId}" subcontext="/controller/nb/v2/statistics">
+        <groups>
+          <group>StatisticsNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a list of all the Port Statistics across all the NodeConnectors
+in a given Node.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <parameter name="nodeType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Type as specifid by Node class]]>
+          </parameter>
+          <parameter name="nodeId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[(no documentation provided)]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="portStatistics" />
+            
+            <documentation><![CDATA[Returns a list of all the Port Statistics across all the
+NodeConnectors in a given Node.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+      <resource name="/{containerName}/tablestats/{nodeType}/{nodeId}" subcontext="/controller/nb/v2/statistics">
+        <groups>
+          <group>StatisticsNorthbound</group>
+        </groups>
+        <operation name="GET">
+          <documentation>
+            <![CDATA[Returns a list of all the Table Statistics on all Nodes.]]>
+          </documentation>
+          <contentType type="*/*" consumable="true" produceable="false"/>
+          <contentType type="application/xml" consumable="true" produceable="true"/>
+          <contentType type="application/json" consumable="false" produceable="true"/>
+          <parameter name="containerName" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Name of the Container. The Container name for the base controller is "default".]]>
+          </parameter>
+          <parameter name="nodeType" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[Node Type as specifid by Node class]]>
+          </parameter>
+          <parameter name="nodeId" type="path" xmlTypeName="string" xmlTypeNamespace="http://www.w3.org/2001/XMLSchema">
+            <![CDATA[(no documentation provided)]]>
+          </parameter>
+          <outValue>
+            <xmlElement elementSchemaId="ns0" elementNamespace="" elementName="tableStatistics" />
+            
+            <documentation><![CDATA[Returns a list of all the Table Statistics in a given Node.]]></documentation>
+          </outValue>
+          <statusCode code="200">
+            <![CDATA[Operation successful]]>
+          </statusCode>
+          <statusCode code="404">
+            <![CDATA[The containerName is not found]]>
+          </statusCode>
+          <statusCode code="503">
+            <![CDATA[One or more of Controller Services are unavailable]]>
+          </statusCode>
+        </operation>
+      </resource>
+    </resources>
+    <groups>
+      <group>
+        <name>StatisticsNorthbound</name>
+        <documentation><![CDATA[Northbound APIs that returns various Statistics exposed by the Southbound
+plugins such as Openflow.
+
+<br>
+<br>
+Authentication scheme : <b>HTTP Basic</b><br>
+Authentication realm : <b>opendaylight</b><br>
+Transport : <b>HTTP and HTTPS</b><br>
+<br>
+HTTPS Authentication is disabled by default. Administrator can enable it in
+tomcat-server.xml after adding a proper keystore / SSL certificate from a
+trusted authority.<br>
+More info :
+http://tomcat.apache.org/tomcat-7.0-doc/ssl-howto.html#Configuration]]></documentation>
+      </group>
+    </groups>
+  </rest>
+  <packages>
+    <package id="org.opendaylight.controller.statistics.northbound">
+    </package>
+  </packages>
+</api-docs>

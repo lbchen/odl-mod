@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DefaultEntityClassifier.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker_new.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">DefaultEntityClassifier.java</span></div><h1>DefaultEntityClassifier.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2011,2012 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ *
+ *      http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *    Originally created by David Erickson, Stanford University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ *    you may not use this file except in compliance with the
+ *    License. You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing,
+ *    software distributed under the License is distributed on an &quot;AS
+ *    IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ *    express or implied. See the License for the specific language
+ *    governing permissions and limitations under the License.
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import java.util.Collection;
+import java.util.EnumSet;
+
+import org.opendaylight.controller.hosttracker.Entity;
+import org.opendaylight.controller.hosttracker.IDevice;
+import org.opendaylight.controller.hosttracker.IDeviceService;
+import org.opendaylight.controller.hosttracker.IDeviceService.DeviceField;
+import org.opendaylight.controller.hosttracker.IEntityClass;
+import org.opendaylight.controller.hosttracker.IEntityClassListener;
+import org.opendaylight.controller.hosttracker.IEntityClassifierService;
+
+/**
+ * This is a default entity classifier that simply classifies all entities into
+ * a fixed entity class, with key fields of MAC and VLAN.
+ *
+ * @author readams
+ */
+<span class="nc" id="L53">public class DefaultEntityClassifier implements IEntityClassifierService {</span>
+    /**
+     * A default fixed entity class
+     */
+    protected static class DefaultEntityClass implements IEntityClass {
+        String name;
+
+<span class="nc" id="L60">        public DefaultEntityClass(String name) {</span>
+<span class="nc" id="L61">            this.name = name;</span>
+<span class="nc" id="L62">        }</span>
+
+        @Override
+        public EnumSet&lt;IDeviceService.DeviceField&gt; getKeyFields() {
+<span class="nc" id="L66">            return keyFields;</span>
+        }
+
+        @Override
+        public String getName() {
+<span class="nc" id="L71">            return name;</span>
+        }
+    }
+
+    protected static EnumSet&lt;DeviceField&gt; keyFields;
+    static {
+<span class="nc" id="L77">        keyFields = EnumSet.of(DeviceField.MAC, DeviceField.VLAN);</span>
+    }
+<span class="nc" id="L79">    protected static DefaultEntityClass entityClass = new DefaultEntityClass(</span>
+<span class="nc" id="L80">            &quot;DefaultEntityClass&quot;);</span>
+
+    @Override
+    public IEntityClass classifyEntity(Entity entity) {
+<span class="nc" id="L84">        return entityClass;</span>
+    }
+
+    @Override
+    public IEntityClass reclassifyEntity(IDevice curDevice, Entity entity) {
+<span class="nc" id="L89">        return entityClass;</span>
+    }
+
+    @Override
+    public void deviceUpdate(IDevice oldDevice,
+            Collection&lt;? extends IDevice&gt; newDevices) {
+        // no-op
+<span class="nc" id="L96">    }</span>
+
+    @Override
+    public EnumSet&lt;DeviceField&gt; getKeyFields() {
+<span class="nc" id="L100">        return keyFields;</span>
+    }
+
+    @Override
+    public void addListener(IEntityClassListener listener) {
+        // no-op
+
+<span class="nc" id="L107">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

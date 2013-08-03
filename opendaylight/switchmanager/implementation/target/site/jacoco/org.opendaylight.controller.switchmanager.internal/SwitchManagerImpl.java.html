@@ -1,0 +1,1806 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SwitchManagerImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">switchmanager.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.switchmanager.internal</a> &gt; <span class="el_source">SwitchManagerImpl.java</span></div><h1>SwitchManagerImpl.java</h1><pre class="source lang-java linenums"><span class="nc" id="L1">/*</span>
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.switchmanager.internal;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Dictionary;
+import java.util.EnumSet;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.apache.felix.dm.Component;
+import org.eclipse.osgi.framework.console.CommandInterpreter;
+import org.eclipse.osgi.framework.console.CommandProvider;
+import org.opendaylight.controller.clustering.services.CacheConfigException;
+import org.opendaylight.controller.clustering.services.CacheExistException;
+import org.opendaylight.controller.clustering.services.ICacheUpdateAware;
+import org.opendaylight.controller.clustering.services.IClusterContainerServices;
+import org.opendaylight.controller.clustering.services.IClusterServices;
+import org.opendaylight.controller.configuration.IConfigurationContainerAware;
+import org.opendaylight.controller.sal.core.Bandwidth;
+import org.opendaylight.controller.sal.core.Config;
+import org.opendaylight.controller.sal.core.Description;
+import org.opendaylight.controller.sal.core.MacAddress;
+import org.opendaylight.controller.sal.core.Name;
+import org.opendaylight.controller.sal.core.Node;
+import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.core.NodeConnector.NodeConnectorIDType;
+import org.opendaylight.controller.sal.core.Property;
+import org.opendaylight.controller.sal.core.State;
+import org.opendaylight.controller.sal.core.Tier;
+import org.opendaylight.controller.sal.core.UpdateType;
+import org.opendaylight.controller.sal.inventory.IInventoryService;
+import org.opendaylight.controller.sal.inventory.IListenInventoryUpdates;
+import org.opendaylight.controller.sal.utils.HexEncode;
+import org.opendaylight.controller.sal.utils.StatusCode;
+import org.opendaylight.controller.sal.utils.GlobalConstants;
+import org.opendaylight.controller.sal.utils.IObjectReader;
+import org.opendaylight.controller.sal.utils.ObjectReader;
+import org.opendaylight.controller.sal.utils.ObjectWriter;
+import org.opendaylight.controller.sal.utils.ServiceHelper;
+import org.opendaylight.controller.sal.utils.Status;
+import org.opendaylight.controller.switchmanager.IInventoryListener;
+import org.opendaylight.controller.switchmanager.ISpanAware;
+import org.opendaylight.controller.switchmanager.ISwitchManager;
+import org.opendaylight.controller.switchmanager.ISwitchManagerAware;
+import org.opendaylight.controller.switchmanager.SpanConfig;
+import org.opendaylight.controller.switchmanager.Subnet;
+import org.opendaylight.controller.switchmanager.SubnetConfig;
+import org.opendaylight.controller.switchmanager.Switch;
+import org.opendaylight.controller.switchmanager.SwitchConfig;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * The class describes SwitchManager which is the central repository of all the
+ * inventory data including nodes, node connectors, properties attached, Layer3
+ * configurations, Span configurations, node configurations, network device
+ * representations viewed by Controller Web applications. One SwitchManager
+ * instance per container of the network. All the node/nodeConnector properties
+ * are maintained in the default container only.
+ */
+<span class="nc" id="L85">public class SwitchManagerImpl implements ISwitchManager,</span>
+IConfigurationContainerAware, IObjectReader,
+ICacheUpdateAware&lt;Long, String&gt;, IListenInventoryUpdates,
+CommandProvider {
+<span class="nc" id="L89">    private static Logger log = LoggerFactory</span>
+<span class="nc" id="L90">            .getLogger(SwitchManagerImpl.class);</span>
+<span class="nc" id="L91">    private static String ROOT = GlobalConstants.STARTUPHOME.toString();</span>
+    private static final String SAVE = &quot;Save&quot;;
+<span class="nc" id="L93">    private String subnetFileName = null, spanFileName = null,</span>
+<span class="nc" id="L94">            switchConfigFileName = null;</span>
+<span class="nc" id="L95">    private final List&lt;NodeConnector&gt; spanNodeConnectors = new CopyOnWriteArrayList&lt;NodeConnector&gt;();</span>
+    private ConcurrentMap&lt;InetAddress, Subnet&gt; subnets; // set of Subnets keyed by the InetAddress
+    private ConcurrentMap&lt;String, SubnetConfig&gt; subnetsConfigList;
+    private ConcurrentMap&lt;Integer, SpanConfig&gt; spanConfigList;
+    private ConcurrentMap&lt;String, SwitchConfig&gt; nodeConfigList; // manually configured parameters for the node like name and tier
+    private ConcurrentMap&lt;Long, String&gt; configSaveEvent;
+    private ConcurrentMap&lt;Node, Map&lt;String, Property&gt;&gt; nodeProps; // properties are maintained in global container only
+    private ConcurrentMap&lt;NodeConnector, Map&lt;String, Property&gt;&gt; nodeConnectorProps; // properties are maintained in global container only
+    private ConcurrentMap&lt;Node, Map&lt;String, NodeConnector&gt;&gt; nodeConnectorNames;
+    private IInventoryService inventoryService;
+<span class="nc" id="L105">    private final Set&lt;ISwitchManagerAware&gt; switchManagerAware = Collections</span>
+<span class="nc" id="L106">            .synchronizedSet(new HashSet&lt;ISwitchManagerAware&gt;());</span>
+<span class="nc" id="L107">    private final Set&lt;IInventoryListener&gt; inventoryListeners = Collections</span>
+<span class="nc" id="L108">            .synchronizedSet(new HashSet&lt;IInventoryListener&gt;());</span>
+<span class="nc" id="L109">    private final Set&lt;ISpanAware&gt; spanAware = Collections</span>
+<span class="nc" id="L110">            .synchronizedSet(new HashSet&lt;ISpanAware&gt;());</span>
+    private byte[] MAC;
+<span class="nc" id="L112">    private static boolean hostRefresh = true;</span>
+<span class="nc" id="L113">    private int hostRetryCount = 5;</span>
+<span class="nc" id="L114">    private IClusterContainerServices clusterContainerService = null;</span>
+<span class="nc" id="L115">    private String containerName = null;</span>
+<span class="nc" id="L116">    private boolean isDefaultContainer = true;</span>
+
+<span class="nc" id="L118">    public enum ReasonCode {</span>
+<span class="nc" id="L119">        SUCCESS(&quot;Success&quot;), FAILURE(&quot;Failure&quot;), INVALID_CONF(</span>
+<span class="nc" id="L120">                &quot;Invalid Configuration&quot;), EXIST(&quot;Entry Already Exist&quot;), CONFLICT(</span>
+<span class="nc" id="L121">                        &quot;Configuration Conflict with Existing Entry&quot;);</span>
+
+        private final String name;
+
+<span class="nc" id="L125">        private ReasonCode(String name) {</span>
+<span class="nc" id="L126">            this.name = name;</span>
+<span class="nc" id="L127">        }</span>
+
+        @Override
+        public String toString() {
+<span class="nc" id="L131">            return name;</span>
+        }
+    }
+
+    public void notifySubnetChange(Subnet sub, boolean add) {
+<span class="nc" id="L136">        synchronized (switchManagerAware) {</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">            for (Object subAware : switchManagerAware) {</span>
+                try {
+<span class="nc" id="L139">                    ((ISwitchManagerAware) subAware).subnetNotify(sub, add);</span>
+<span class="nc" id="L140">                } catch (Exception e) {</span>
+<span class="nc" id="L141">                    log.error(&quot;Failed to notify Subnet change {}&quot;,</span>
+<span class="nc" id="L142">                            e.getMessage());</span>
+                }
+            }
+        }
+<span class="nc" id="L146">    }</span>
+
+    public void notifySpanPortChange(Node node, List&lt;NodeConnector&gt; ports,
+            boolean add) {
+<span class="nc" id="L150">        synchronized (spanAware) {</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">            for (Object sa : spanAware) {</span>
+                try {
+<span class="nc" id="L153">                    ((ISpanAware) sa).spanUpdate(node, ports, add);</span>
+<span class="nc" id="L154">                } catch (Exception e) {</span>
+<span class="nc" id="L155">                    log.error(&quot;Failed to notify Span Interface change {}&quot;,</span>
+<span class="nc" id="L156">                            e.getMessage());</span>
+                }
+            }
+        }
+<span class="nc" id="L160">    }</span>
+
+    private void notifyModeChange(Node node, boolean proactive) {
+<span class="nc" id="L163">        synchronized (switchManagerAware) {</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">            for (ISwitchManagerAware service : switchManagerAware) {</span>
+                try {
+<span class="nc" id="L166">                    service.modeChangeNotify(node, proactive);</span>
+<span class="nc" id="L167">                } catch (Exception e) {</span>
+<span class="nc" id="L168">                    log.error(&quot;Failed to notify Subnet change {}&quot;,</span>
+<span class="nc" id="L169">                            e.getMessage());</span>
+                }
+            }
+        }
+<span class="nc" id="L173">    }</span>
+
+    public void startUp() {
+        // Initialize configuration file names
+<span class="nc" id="L177">        subnetFileName = ROOT + &quot;subnets&quot; + this.getContainerName() + &quot;.conf&quot;;</span>
+<span class="nc" id="L178">        spanFileName = ROOT + &quot;spanPorts_&quot; + this.getContainerName() + &quot;.conf&quot;;</span>
+<span class="nc" id="L179">        switchConfigFileName = ROOT + &quot;switchConfig_&quot; + this.getContainerName()</span>
+<span class="nc" id="L180">                + &quot;.conf&quot;;</span>
+
+        // Instantiate cluster synced variables
+<span class="nc" id="L183">        allocateCaches();</span>
+<span class="nc" id="L184">        retrieveCaches();</span>
+
+        /*
+         * Read startup and build database if we have not already gotten the
+         * configurations synced from another node
+         */
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if (subnetsConfigList.isEmpty()) {</span>
+<span class="nc" id="L191">            loadSubnetConfiguration();</span>
+        }
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        if (spanConfigList.isEmpty()) {</span>
+<span class="nc" id="L194">            loadSpanConfiguration();</span>
+        }
+<span class="nc bnc" id="L196" title="All 2 branches missed.">        if (nodeConfigList.isEmpty()) {</span>
+<span class="nc" id="L197">            loadSwitchConfiguration();</span>
+        }
+
+<span class="nc" id="L200">        MAC = getHardwareMAC();</span>
+<span class="nc" id="L201">    }</span>
+
+    public void shutDown() {
+<span class="nc" id="L204">        destroyCaches(this.getContainerName());</span>
+<span class="nc" id="L205">    }</span>
+
+    @SuppressWarnings(&quot;deprecation&quot;)
+    private void allocateCaches() {
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        if (this.clusterContainerService == null) {</span>
+<span class="nc" id="L210">            log.warn(&quot;un-initialized clusterContainerService, can't create cache&quot;);</span>
+<span class="nc" id="L211">            return;</span>
+        }
+
+        try {
+<span class="nc" id="L215">            clusterContainerService.createCache(</span>
+<span class="nc" id="L216">                    &quot;switchmanager.subnetsConfigList&quot;,</span>
+<span class="nc" id="L217">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L218">            clusterContainerService.createCache(&quot;switchmanager.spanConfigList&quot;,</span>
+<span class="nc" id="L219">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L220">            clusterContainerService.createCache(&quot;switchmanager.nodeConfigList&quot;,</span>
+<span class="nc" id="L221">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L222">            clusterContainerService.createCache(&quot;switchmanager.subnets&quot;,</span>
+<span class="nc" id="L223">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L224">            clusterContainerService.createCache(</span>
+<span class="nc" id="L225">                    &quot;switchmanager.configSaveEvent&quot;,</span>
+<span class="nc" id="L226">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L227">            clusterContainerService.createCache(&quot;switchmanager.nodeProps&quot;,</span>
+<span class="nc" id="L228">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L229">            clusterContainerService.createCache(</span>
+<span class="nc" id="L230">                    &quot;switchmanager.nodeConnectorProps&quot;,</span>
+<span class="nc" id="L231">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L232">            clusterContainerService.createCache(</span>
+<span class="nc" id="L233">                    &quot;switchmanager.nodeConnectorNames&quot;,</span>
+<span class="nc" id="L234">                    EnumSet.of(IClusterServices.cacheMode.NON_TRANSACTIONAL));</span>
+<span class="nc" id="L235">        } catch (CacheConfigException cce) {</span>
+<span class="nc" id="L236">            log.error(&quot;\nCache configuration invalid - check cache mode&quot;);</span>
+<span class="nc" id="L237">        } catch (CacheExistException ce) {</span>
+<span class="nc" id="L238">            log.error(&quot;\nCache already exits - destroy and recreate if needed&quot;);</span>
+        }
+<span class="nc" id="L240">    }</span>
+
+    @SuppressWarnings({ &quot;unchecked&quot;, &quot;deprecation&quot; })
+    private void retrieveCaches() {
+<span class="nc bnc" id="L244" title="All 2 branches missed.">        if (this.clusterContainerService == null) {</span>
+<span class="nc" id="L245">            log.info(&quot;un-initialized clusterContainerService, can't create cache&quot;);</span>
+<span class="nc" id="L246">            return;</span>
+        }
+
+<span class="nc" id="L249">        subnetsConfigList = (ConcurrentMap&lt;String, SubnetConfig&gt;) clusterContainerService</span>
+<span class="nc" id="L250">                .getCache(&quot;switchmanager.subnetsConfigList&quot;);</span>
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (subnetsConfigList == null) {</span>
+<span class="nc" id="L252">            log.error(&quot;\nFailed to get cache for subnetsConfigList&quot;);</span>
+        }
+
+<span class="nc" id="L255">        spanConfigList = (ConcurrentMap&lt;Integer, SpanConfig&gt;) clusterContainerService</span>
+<span class="nc" id="L256">                .getCache(&quot;switchmanager.spanConfigList&quot;);</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">        if (spanConfigList == null) {</span>
+<span class="nc" id="L258">            log.error(&quot;\nFailed to get cache for spanConfigList&quot;);</span>
+        }
+
+<span class="nc" id="L261">        nodeConfigList = (ConcurrentMap&lt;String, SwitchConfig&gt;) clusterContainerService</span>
+<span class="nc" id="L262">                .getCache(&quot;switchmanager.nodeConfigList&quot;);</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">        if (nodeConfigList == null) {</span>
+<span class="nc" id="L264">            log.error(&quot;\nFailed to get cache for nodeConfigList&quot;);</span>
+        }
+
+<span class="nc" id="L267">        subnets = (ConcurrentMap&lt;InetAddress, Subnet&gt;) clusterContainerService</span>
+<span class="nc" id="L268">                .getCache(&quot;switchmanager.subnets&quot;);</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">        if (subnets == null) {</span>
+<span class="nc" id="L270">            log.error(&quot;\nFailed to get cache for subnets&quot;);</span>
+        }
+
+<span class="nc" id="L273">        configSaveEvent = (ConcurrentMap&lt;Long, String&gt;) clusterContainerService</span>
+<span class="nc" id="L274">                .getCache(&quot;switchmanager.configSaveEvent&quot;);</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        if (configSaveEvent == null) {</span>
+<span class="nc" id="L276">            log.error(&quot;\nFailed to get cache for configSaveEvent&quot;);</span>
+        }
+
+<span class="nc" id="L279">        nodeProps = (ConcurrentMap&lt;Node, Map&lt;String, Property&gt;&gt;) clusterContainerService</span>
+<span class="nc" id="L280">                .getCache(&quot;switchmanager.nodeProps&quot;);</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">        if (nodeProps == null) {</span>
+<span class="nc" id="L282">            log.error(&quot;\nFailed to get cache for nodeProps&quot;);</span>
+        }
+
+<span class="nc" id="L285">        nodeConnectorProps = (ConcurrentMap&lt;NodeConnector, Map&lt;String, Property&gt;&gt;) clusterContainerService</span>
+<span class="nc" id="L286">                .getCache(&quot;switchmanager.nodeConnectorProps&quot;);</span>
+<span class="nc bnc" id="L287" title="All 2 branches missed.">        if (nodeConnectorProps == null) {</span>
+<span class="nc" id="L288">            log.error(&quot;\nFailed to get cache for nodeConnectorProps&quot;);</span>
+        }
+
+<span class="nc" id="L291">        nodeConnectorNames = (ConcurrentMap&lt;Node, Map&lt;String, NodeConnector&gt;&gt;) clusterContainerService</span>
+<span class="nc" id="L292">                .getCache(&quot;switchmanager.nodeConnectorNames&quot;);</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">        if (nodeConnectorNames == null) {</span>
+<span class="nc" id="L294">            log.error(&quot;\nFailed to get cache for nodeConnectorNames&quot;);</span>
+        }
+<span class="nc" id="L296">    }</span>
+
+    void nonClusterObjectCreate() {
+<span class="nc" id="L299">        subnetsConfigList = new ConcurrentHashMap&lt;String, SubnetConfig&gt;();</span>
+<span class="nc" id="L300">        spanConfigList = new ConcurrentHashMap&lt;Integer, SpanConfig&gt;();</span>
+<span class="nc" id="L301">        nodeConfigList = new ConcurrentHashMap&lt;String, SwitchConfig&gt;();</span>
+<span class="nc" id="L302">        subnets = new ConcurrentHashMap&lt;InetAddress, Subnet&gt;();</span>
+<span class="nc" id="L303">        configSaveEvent = new ConcurrentHashMap&lt;Long, String&gt;();</span>
+<span class="nc" id="L304">        nodeProps = new ConcurrentHashMap&lt;Node, Map&lt;String, Property&gt;&gt;();</span>
+<span class="nc" id="L305">        nodeConnectorProps = new ConcurrentHashMap&lt;NodeConnector, Map&lt;String, Property&gt;&gt;();</span>
+<span class="nc" id="L306">        nodeConnectorNames = new ConcurrentHashMap&lt;Node, Map&lt;String, NodeConnector&gt;&gt;();</span>
+<span class="nc" id="L307">    }</span>
+
+    @SuppressWarnings(&quot;deprecation&quot;)
+    private void destroyCaches(String container) {
+<span class="nc bnc" id="L311" title="All 2 branches missed.">        if (this.clusterContainerService == null) {</span>
+<span class="nc" id="L312">            log.info(&quot;un-initialized clusterContainerService, can't create cache&quot;);</span>
+<span class="nc" id="L313">            return;</span>
+        }
+
+<span class="nc" id="L316">        clusterContainerService.destroyCache(&quot;switchmanager.subnetsConfigList&quot;);</span>
+<span class="nc" id="L317">        clusterContainerService.destroyCache(&quot;switchmanager.spanConfigList&quot;);</span>
+<span class="nc" id="L318">        clusterContainerService.destroyCache(&quot;switchmanager.nodeConfigList&quot;);</span>
+<span class="nc" id="L319">        clusterContainerService.destroyCache(&quot;switchmanager.subnets&quot;);</span>
+<span class="nc" id="L320">        clusterContainerService.destroyCache(&quot;switchmanager.configSaveEvent&quot;);</span>
+<span class="nc" id="L321">        clusterContainerService.destroyCache(&quot;switchmanager.nodeProps&quot;);</span>
+<span class="nc" id="L322">        clusterContainerService</span>
+<span class="nc" id="L323">        .destroyCache(&quot;switchmanager.nodeConnectorProps&quot;);</span>
+<span class="nc" id="L324">        clusterContainerService</span>
+<span class="nc" id="L325">        .destroyCache(&quot;switchmanager.nodeConnectorNames&quot;);</span>
+<span class="nc" id="L326">        nonClusterObjectCreate();</span>
+<span class="nc" id="L327">    }</span>
+
+    @Override
+    public List&lt;SubnetConfig&gt; getSubnetsConfigList() {
+<span class="nc" id="L331">        return new ArrayList&lt;SubnetConfig&gt;(subnetsConfigList.values());</span>
+    }
+
+    @Override
+    public SubnetConfig getSubnetConfig(String subnet) {
+<span class="nc" id="L336">        return subnetsConfigList.get(subnet);</span>
+    }
+
+    private List&lt;SpanConfig&gt; getSpanConfigList(Node node) {
+<span class="nc" id="L340">        List&lt;SpanConfig&gt; confList = new ArrayList&lt;SpanConfig&gt;();</span>
+<span class="nc" id="L341">        String nodeId = node.toString();</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">        for (SpanConfig conf : spanConfigList.values()) {</span>
+<span class="nc bnc" id="L343" title="All 2 branches missed.">            if (conf.matchNode(nodeId)) {</span>
+<span class="nc" id="L344">                confList.add(conf);</span>
+            }
+        }
+<span class="nc" id="L347">        return confList;</span>
+    }
+
+    public List&lt;SwitchConfig&gt; getNodeConfigList() {
+<span class="nc" id="L351">        return new ArrayList&lt;SwitchConfig&gt;(nodeConfigList.values());</span>
+    }
+
+    @Override
+    public SwitchConfig getSwitchConfig(String switchId) {
+<span class="nc" id="L356">        return nodeConfigList.get(switchId);</span>
+    }
+
+    public Switch getSwitchByNode(Node node) {
+<span class="nc" id="L360">        Switch sw = new Switch(node);</span>
+<span class="nc" id="L361">        sw.setNode(node);</span>
+<span class="nc" id="L362">        MacAddress mac = (MacAddress) this.getNodeProp(node,</span>
+<span class="nc" id="L363">                MacAddress.name);</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">        if (mac != null) {</span>
+<span class="nc" id="L365">            sw.setDataLayerAddress(mac.getMacAddress());</span>
+        }
+<span class="nc" id="L367">        Set&lt;NodeConnector&gt; ncSet = getPhysicalNodeConnectors(node);</span>
+<span class="nc" id="L368">        sw.setNodeConnectors(ncSet);</span>
+
+<span class="nc" id="L370">        List&lt;NodeConnector&gt; ncList = new ArrayList&lt;NodeConnector&gt;();</span>
+<span class="nc bnc" id="L371" title="All 2 branches missed.">        for (NodeConnector nodeConnector : ncSet) {</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">            if (spanNodeConnectors.contains(nodeConnector)) {</span>
+<span class="nc" id="L373">                ncList.add(nodeConnector);</span>
+            }
+        }
+<span class="nc" id="L376">        sw.addSpanPorts(ncList);</span>
+
+<span class="nc" id="L378">        return sw;</span>
+    }
+
+    @Override
+    public List&lt;Switch&gt; getNetworkDevices() {
+<span class="nc" id="L383">        Set&lt;Node&gt; nodeSet = getNodes();</span>
+<span class="nc" id="L384">        List&lt;Switch&gt; swList = new ArrayList&lt;Switch&gt;();</span>
+<span class="nc bnc" id="L385" title="All 2 branches missed.">        if (nodeSet != null) {</span>
+<span class="nc bnc" id="L386" title="All 2 branches missed.">            for (Node node : nodeSet) {</span>
+<span class="nc" id="L387">                swList.add(getSwitchByNode(node));</span>
+            }
+        }
+
+<span class="nc" id="L391">        return swList;</span>
+    }
+
+    private void updateConfig(SubnetConfig conf, boolean add) {
+<span class="nc bnc" id="L395" title="All 2 branches missed.">        if (add) {</span>
+<span class="nc" id="L396">            subnetsConfigList.put(conf.getName(), conf);</span>
+<span class="nc" id="L397">        } else {</span>
+<span class="nc" id="L398">            subnetsConfigList.remove(conf.getName());</span>
+        }
+<span class="nc" id="L400">    }</span>
+
+    private void updateDatabase(SubnetConfig conf, boolean add) {
+<span class="nc" id="L403">        Subnet subnet = subnets.get(conf.getIPnum());</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">        if (add) {</span>
+<span class="nc bnc" id="L405" title="All 2 branches missed.">            if (subnet == null) {</span>
+<span class="nc" id="L406">                subnet = new Subnet(conf);</span>
+            }
+            // In case of API3 call we may receive the ports along with the
+            // subnet creation
+<span class="nc bnc" id="L410" title="All 2 branches missed.">            if (!conf.isGlobal()) {</span>
+<span class="nc" id="L411">                Set&lt;NodeConnector&gt; sp = conf.getSubnetNodeConnectors();</span>
+<span class="nc" id="L412">                subnet.addNodeConnectors(sp);</span>
+            }
+<span class="nc" id="L414">            subnets.put(conf.getIPnum(), subnet);</span>
+<span class="nc" id="L415">        } else { // This is the deletion of the whole subnet</span>
+<span class="nc bnc" id="L416" title="All 2 branches missed.">            if (subnet == null) {</span>
+<span class="nc" id="L417">                return;</span>
+            }
+<span class="nc" id="L419">            subnets.remove(conf.getIPnum());</span>
+        }
+<span class="nc" id="L421">    }</span>
+
+    private Status semanticCheck(SubnetConfig conf) {
+<span class="nc" id="L424">        Subnet newSubnet = new Subnet(conf);</span>
+<span class="nc" id="L425">        Set&lt;InetAddress&gt; IPs = subnets.keySet();</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">        if (IPs == null) {</span>
+<span class="nc" id="L427">            return new Status(StatusCode.SUCCESS, null);</span>
+        }
+<span class="nc bnc" id="L429" title="All 2 branches missed.">        for (InetAddress i : IPs) {</span>
+<span class="nc" id="L430">            Subnet existingSubnet = subnets.get(i);</span>
+<span class="nc bnc" id="L431" title="All 2 branches missed.">            if ((existingSubnet != null)</span>
+<span class="nc bnc" id="L432" title="All 2 branches missed.">                    &amp;&amp; !existingSubnet.isMutualExclusive(newSubnet)) {</span>
+<span class="nc" id="L433">                return new Status(StatusCode.CONFLICT, null);</span>
+            }
+        }
+<span class="nc" id="L436">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    private Status addRemoveSubnet(SubnetConfig conf, boolean add) {
+        // Valid config check
+<span class="nc bnc" id="L441" title="All 2 branches missed.">        if (!conf.isValidConfig()) {</span>
+<span class="nc" id="L442">            String msg = &quot;Invalid Subnet configuration&quot;;</span>
+<span class="nc" id="L443">            log.warn(msg);</span>
+<span class="nc" id="L444">            return new Status(StatusCode.BADREQUEST, msg);</span>
+        }
+
+<span class="nc bnc" id="L447" title="All 2 branches missed.">        if (add) {</span>
+            // Presence check
+<span class="nc bnc" id="L449" title="All 2 branches missed.">            if (subnetsConfigList.containsKey(conf.getName())) {</span>
+<span class="nc" id="L450">                return new Status(StatusCode.CONFLICT,</span>
+<span class="nc" id="L451">                        &quot;Same subnet config already exists&quot;);</span>
+            }
+            // Semantyc check
+<span class="nc" id="L454">            Status rc = semanticCheck(conf);</span>
+<span class="nc bnc" id="L455" title="All 2 branches missed.">            if (!rc.isSuccess()) {</span>
+<span class="nc" id="L456">                return rc;</span>
+            }
+        }
+        // Update Configuration
+<span class="nc" id="L460">        updateConfig(conf, add);</span>
+
+        // Update Database
+<span class="nc" id="L463">        updateDatabase(conf, add);</span>
+
+<span class="nc" id="L465">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    /**
+     * Adds Subnet configured in GUI or API3
+     */
+    @Override
+    public Status addSubnet(SubnetConfig conf) {
+<span class="nc" id="L473">        return this.addRemoveSubnet(conf, true);</span>
+    }
+
+    @Override
+    public Status removeSubnet(SubnetConfig conf) {
+<span class="nc" id="L478">        return this.addRemoveSubnet(conf, false);</span>
+    }
+
+    @Override
+    public Status removeSubnet(String name) {
+<span class="nc" id="L483">        SubnetConfig conf = subnetsConfigList.get(name);</span>
+<span class="nc bnc" id="L484" title="All 2 branches missed.">        if (conf == null) {</span>
+<span class="nc" id="L485">            return new Status(StatusCode.SUCCESS, &quot;Subnet not present&quot;);</span>
+        }
+<span class="nc" id="L487">        return this.addRemoveSubnet(conf, false);</span>
+    }
+
+    @Override
+    public Status addPortsToSubnet(String name, String switchPorts) {
+        // Update Configuration
+<span class="nc" id="L493">        SubnetConfig conf = subnetsConfigList.get(name);</span>
+<span class="nc bnc" id="L494" title="All 2 branches missed.">        if (conf == null) {</span>
+<span class="nc" id="L495">            return new Status(StatusCode.NOTFOUND, &quot;Subnet does not exist&quot;);</span>
+        }
+<span class="nc bnc" id="L497" title="All 2 branches missed.">        if (!conf.isValidSwitchPort(switchPorts)) {</span>
+<span class="nc" id="L498">            return new Status(StatusCode.BADREQUEST, &quot;Invalid switchports&quot;);</span>
+        }
+
+<span class="nc" id="L501">        conf.addNodeConnectors(switchPorts);</span>
+
+        // Update Database
+<span class="nc" id="L504">        Subnet sub = subnets.get(conf.getIPnum());</span>
+<span class="nc" id="L505">        Set&lt;NodeConnector&gt; sp = conf.getNodeConnectors(switchPorts);</span>
+<span class="nc" id="L506">        sub.addNodeConnectors(sp);</span>
+<span class="nc" id="L507">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    @Override
+    public Status removePortsFromSubnet(String name, String switchPorts) {
+        // Update Configuration
+<span class="nc" id="L513">        SubnetConfig conf = subnetsConfigList.get(name);</span>
+<span class="nc bnc" id="L514" title="All 2 branches missed.">        if (conf == null) {</span>
+<span class="nc" id="L515">            return new Status(StatusCode.NOTFOUND, &quot;Subnet does not exist&quot;);</span>
+        }
+<span class="nc" id="L517">        conf.removeNodeConnectors(switchPorts);</span>
+
+        // Update Database
+<span class="nc" id="L520">        Subnet sub = subnets.get(conf.getIPnum());</span>
+<span class="nc" id="L521">        Set&lt;NodeConnector&gt; sp = conf.getNodeConnectors(switchPorts);</span>
+<span class="nc" id="L522">        sub.deleteNodeConnectors(sp);</span>
+<span class="nc" id="L523">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    public String getContainerName() {
+<span class="nc bnc" id="L527" title="All 2 branches missed.">        if (containerName == null) {</span>
+<span class="nc" id="L528">            return GlobalConstants.DEFAULT.toString();</span>
+        }
+<span class="nc" id="L530">        return containerName;</span>
+    }
+
+    @Override
+    public Subnet getSubnetByNetworkAddress(InetAddress networkAddress) {
+        Subnet sub;
+<span class="nc" id="L536">        Set&lt;InetAddress&gt; indices = subnets.keySet();</span>
+<span class="nc bnc" id="L537" title="All 2 branches missed.">        for (InetAddress i : indices) {</span>
+<span class="nc" id="L538">            sub = subnets.get(i);</span>
+<span class="nc bnc" id="L539" title="All 2 branches missed.">            if (sub.isSubnetOf(networkAddress)) {</span>
+<span class="nc" id="L540">                return sub;</span>
+            }
+        }
+<span class="nc" id="L543">        return null;</span>
+    }
+
+    @Override
+    public Object readObject(ObjectInputStream ois)
+            throws FileNotFoundException, IOException, ClassNotFoundException {
+        // Perform the class deserialization locally, from inside the package
+        // where the class is defined
+<span class="nc" id="L551">        return ois.readObject();</span>
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private void loadSubnetConfiguration() {
+<span class="nc" id="L556">        ObjectReader objReader = new ObjectReader();</span>
+<span class="nc" id="L557">        ConcurrentMap&lt;Integer, SubnetConfig&gt; confList = (ConcurrentMap&lt;Integer, SubnetConfig&gt;) objReader</span>
+<span class="nc" id="L558">                .read(this, subnetFileName);</span>
+
+<span class="nc bnc" id="L560" title="All 2 branches missed.">        if (confList == null) {</span>
+<span class="nc" id="L561">            return;</span>
+        }
+
+<span class="nc bnc" id="L564" title="All 2 branches missed.">        for (SubnetConfig conf : confList.values()) {</span>
+<span class="nc" id="L565">            addSubnet(conf);</span>
+        }
+<span class="nc" id="L567">    }</span>
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private void loadSpanConfiguration() {
+<span class="nc" id="L571">        ObjectReader objReader = new ObjectReader();</span>
+<span class="nc" id="L572">        ConcurrentMap&lt;Integer, SpanConfig&gt; confList = (ConcurrentMap&lt;Integer, SpanConfig&gt;) objReader</span>
+<span class="nc" id="L573">                .read(this, spanFileName);</span>
+
+<span class="nc bnc" id="L575" title="All 2 branches missed.">        if (confList == null) {</span>
+<span class="nc" id="L576">            return;</span>
+        }
+
+<span class="nc bnc" id="L579" title="All 2 branches missed.">        for (SpanConfig conf : confList.values()) {</span>
+<span class="nc" id="L580">            addSpanConfig(conf);</span>
+        }
+<span class="nc" id="L582">    }</span>
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private void loadSwitchConfiguration() {
+<span class="nc" id="L586">        ObjectReader objReader = new ObjectReader();</span>
+<span class="nc" id="L587">        ConcurrentMap&lt;String, SwitchConfig&gt; confList = (ConcurrentMap&lt;String, SwitchConfig&gt;) objReader</span>
+<span class="nc" id="L588">                .read(this, switchConfigFileName);</span>
+
+<span class="nc bnc" id="L590" title="All 2 branches missed.">        if (confList == null) {</span>
+<span class="nc" id="L591">            return;</span>
+        }
+
+<span class="nc bnc" id="L594" title="All 2 branches missed.">        for (SwitchConfig conf : confList.values()) {</span>
+<span class="nc" id="L595">            updateSwitchConfig(conf);</span>
+        }
+<span class="nc" id="L597">    }</span>
+
+    @Override
+    public void updateSwitchConfig(SwitchConfig cfgObject) {
+<span class="nc" id="L601">        boolean modeChange = false;</span>
+
+<span class="nc" id="L603">        SwitchConfig sc = nodeConfigList.get(cfgObject.getNodeId());</span>
+<span class="nc bnc" id="L604" title="All 4 branches missed.">        if ((sc == null) || !cfgObject.getMode().equals(sc.getMode())) {</span>
+<span class="nc" id="L605">            modeChange = true;</span>
+        }
+
+<span class="nc" id="L608">        nodeConfigList.put(cfgObject.getNodeId(), cfgObject);</span>
+        try {
+            // update default container only
+<span class="nc bnc" id="L611" title="All 2 branches missed.">            if (isDefaultContainer) {</span>
+<span class="nc" id="L612">                String nodeId = cfgObject.getNodeId();</span>
+<span class="nc" id="L613">                Node node = Node.fromString(nodeId);</span>
+                Map&lt;String, Property&gt; propMap;
+<span class="nc bnc" id="L615" title="All 2 branches missed.">                if (nodeProps.get(node) != null) {</span>
+<span class="nc" id="L616">                    propMap = nodeProps.get(node);</span>
+<span class="nc" id="L617">                } else {</span>
+<span class="nc" id="L618">                    propMap = new HashMap&lt;String, Property&gt;();</span>
+                }
+<span class="nc" id="L620">                Property desc = new Description(cfgObject.getNodeDescription());</span>
+<span class="nc" id="L621">                propMap.put(desc.getName(), desc);</span>
+<span class="nc" id="L622">                Property tier = new Tier(Integer.parseInt(cfgObject.getTier()));</span>
+<span class="nc" id="L623">                propMap.put(tier.getName(), tier);</span>
+<span class="nc" id="L624">                addNodeProps(node, propMap);</span>
+
+<span class="nc" id="L626">                log.info(&quot;Set Node {}'s Mode to {}&quot;, nodeId,</span>
+<span class="nc" id="L627">                        cfgObject.getMode());</span>
+
+<span class="nc bnc" id="L629" title="All 2 branches missed.">                if (modeChange) {</span>
+<span class="nc" id="L630">                    notifyModeChange(node, cfgObject.isProactive());</span>
+                }
+            }
+<span class="nc" id="L633">        } catch (Exception e) {</span>
+<span class="nc" id="L634">            log.debug(&quot;updateSwitchConfig: {}&quot;, e.getMessage());</span>
+        }
+<span class="nc" id="L636">    }</span>
+
+    @Override
+    public Status saveSwitchConfig() {
+        // Publish the save config event to the cluster nodes
+<span class="nc" id="L641">        configSaveEvent.put(new Date().getTime(), SAVE);</span>
+<span class="nc" id="L642">        return saveSwitchConfigInternal();</span>
+    }
+
+    public Status saveSwitchConfigInternal() {
+<span class="nc" id="L646">        Status retS = null, retP = null;</span>
+<span class="nc" id="L647">        ObjectWriter objWriter = new ObjectWriter();</span>
+
+<span class="nc" id="L649">        retS = objWriter.write(new ConcurrentHashMap&lt;String, SubnetConfig&gt;(</span>
+<span class="nc" id="L650">                subnetsConfigList), subnetFileName);</span>
+<span class="nc" id="L651">        retP = objWriter.write(new ConcurrentHashMap&lt;Integer, SpanConfig&gt;(</span>
+<span class="nc" id="L652">                spanConfigList), spanFileName);</span>
+<span class="nc" id="L653">        retS = objWriter.write(new ConcurrentHashMap&lt;String, SwitchConfig&gt;(</span>
+<span class="nc" id="L654">                nodeConfigList), switchConfigFileName);</span>
+
+<span class="nc bnc" id="L656" title="All 2 branches missed.">        if (retS.equals(retP)) {</span>
+<span class="nc bnc" id="L657" title="All 2 branches missed.">            if (retS.isSuccess()) {</span>
+<span class="nc" id="L658">                return retS;</span>
+            } else {
+<span class="nc" id="L660">                return new Status(StatusCode.INTERNALERROR, &quot;Save failed&quot;);</span>
+            }
+        } else {
+<span class="nc" id="L663">            return new Status(StatusCode.INTERNALERROR, &quot;Partial save failure&quot;);</span>
+        }
+    }
+
+    @Override
+    public List&lt;SpanConfig&gt; getSpanConfigList() {
+<span class="nc" id="L669">        return new ArrayList&lt;SpanConfig&gt;(spanConfigList.values());</span>
+    }
+
+    @Override
+    public Status addSpanConfig(SpanConfig conf) {
+        // Valid config check
+<span class="nc bnc" id="L675" title="All 2 branches missed.">        if (!conf.isValidConfig()) {</span>
+<span class="nc" id="L676">            String msg = &quot;Invalid Span configuration&quot;;</span>
+<span class="nc" id="L677">            log.warn(msg);</span>
+<span class="nc" id="L678">            return new Status(StatusCode.BADREQUEST, msg);</span>
+        }
+
+        // Presence check
+<span class="nc bnc" id="L682" title="All 2 branches missed.">        if (spanConfigList.containsKey(conf.hashCode())) {</span>
+<span class="nc" id="L683">            return new Status(StatusCode.CONFLICT, &quot;Same span config exists&quot;);</span>
+        }
+
+        // Update database and notify clients
+<span class="nc" id="L687">        addSpanPorts(conf.getNode(), conf.getPortArrayList());</span>
+
+        // Update configuration
+<span class="nc" id="L690">        spanConfigList.put(conf.hashCode(), conf);</span>
+
+<span class="nc" id="L692">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    @Override
+    public Status removeSpanConfig(SpanConfig conf) {
+<span class="nc" id="L697">        removeSpanPorts(conf.getNode(), conf.getPortArrayList());</span>
+
+        // Update configuration
+<span class="nc" id="L700">        spanConfigList.remove(conf.hashCode());</span>
+
+<span class="nc" id="L702">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    @Override
+    public List&lt;NodeConnector&gt; getSpanPorts(Node node) {
+<span class="nc" id="L707">        List&lt;NodeConnector&gt; ncList = new ArrayList&lt;NodeConnector&gt;();</span>
+
+<span class="nc bnc" id="L709" title="All 2 branches missed.">        for (NodeConnector nodeConnector : spanNodeConnectors) {</span>
+<span class="nc bnc" id="L710" title="All 2 branches missed.">            if (nodeConnector.getNode().equals(node)) {</span>
+<span class="nc" id="L711">                ncList.add(nodeConnector);</span>
+            }
+        }
+<span class="nc" id="L714">        return ncList;</span>
+    }
+
+    @Override
+    public void entryCreated(Long key, String cacheName, boolean local) {
+<span class="nc" id="L719">    }</span>
+
+    @Override
+    public void entryUpdated(Long key, String new_value, String cacheName,
+            boolean originLocal) {
+<span class="nc" id="L724">        saveSwitchConfigInternal();</span>
+<span class="nc" id="L725">    }</span>
+
+    @Override
+    public void entryDeleted(Long key, String cacheName, boolean originLocal) {
+<span class="nc" id="L729">    }</span>
+
+    private void addNode(Node node, Set&lt;Property&gt; props) {
+<span class="nc" id="L732">        log.trace(&quot;{} added, props: {}&quot;, node, props);</span>
+<span class="nc bnc" id="L733" title="All 2 branches missed.">        if (nodeProps == null) {</span>
+<span class="nc" id="L734">            return;</span>
+        }
+
+        Map&lt;String, Property&gt; propMap;
+<span class="nc bnc" id="L738" title="All 2 branches missed.">        if (nodeProps.get(node) != null) {</span>
+<span class="nc" id="L739">            propMap = nodeProps.get(node);</span>
+<span class="nc" id="L740">        } else {</span>
+<span class="nc" id="L741">            propMap = new HashMap&lt;String, Property&gt;();</span>
+        }
+
+        // copy node properties from plugin
+<span class="nc bnc" id="L745" title="All 2 branches missed.">        if (props != null) {</span>
+<span class="nc bnc" id="L746" title="All 2 branches missed.">            for (Property prop : props) {</span>
+<span class="nc" id="L747">                propMap.put(prop.getName(), prop);</span>
+            }
+        }
+
+        // copy node properties from config
+<span class="nc" id="L752">        boolean proactiveForwarding = false;</span>
+<span class="nc bnc" id="L753" title="All 2 branches missed.">        if (nodeConfigList != null) {</span>
+<span class="nc" id="L754">            String nodeId = node.toString();</span>
+<span class="nc bnc" id="L755" title="All 2 branches missed.">            for (SwitchConfig conf : nodeConfigList.values()) {</span>
+<span class="nc bnc" id="L756" title="All 2 branches missed.">                if (conf.getNodeId().equals(nodeId)) {</span>
+<span class="nc" id="L757">                    Property description = new Description(</span>
+<span class="nc" id="L758">                            conf.getNodeDescription());</span>
+<span class="nc" id="L759">                    propMap.put(description.getName(), description);</span>
+<span class="nc" id="L760">                    Property tier = new Tier(Integer.parseInt(conf.getTier()));</span>
+<span class="nc" id="L761">                    propMap.put(tier.getName(), tier);</span>
+<span class="nc" id="L762">                    proactiveForwarding = conf.isProactive();</span>
+<span class="nc" id="L763">                    break;</span>
+                }
+            }
+        }
+<span class="nc" id="L767">        addNodeProps(node, propMap);</span>
+
+        // check if span ports are configed
+<span class="nc" id="L770">        addSpanPorts(node);</span>
+
+        // notify node listeners
+<span class="nc" id="L773">        notifyNode(node, UpdateType.ADDED, propMap);</span>
+
+        // notify proactive mode forwarding
+<span class="nc bnc" id="L776" title="All 2 branches missed.">        if (proactiveForwarding) {</span>
+<span class="nc" id="L777">            notifyModeChange(node, true);</span>
+        }
+<span class="nc" id="L779">    }</span>
+
+    private void removeNode(Node node) {
+<span class="nc" id="L782">        log.trace(&quot;{} removed&quot;, node);</span>
+<span class="nc bnc" id="L783" title="All 2 branches missed.">        if (nodeProps == null) {</span>
+<span class="nc" id="L784">            return;</span>
+        }
+<span class="nc" id="L786">        nodeProps.remove(node);</span>
+
+        // check if span ports need to be cleaned up
+<span class="nc" id="L789">        removeSpanPorts(node);</span>
+
+        /* notify node listeners */
+<span class="nc" id="L792">        notifyNode(node, UpdateType.REMOVED, null);</span>
+<span class="nc" id="L793">    }</span>
+
+    private void updateNode(Node node, Set&lt;Property&gt; props) {
+<span class="nc" id="L796">        log.trace(&quot;{} updated, props: {}&quot;, node, props);</span>
+<span class="nc bnc" id="L797" title="All 4 branches missed.">        if (nodeProps == null || !nodeProps.containsKey(node) ||</span>
+<span class="nc bnc" id="L798" title="All 4 branches missed.">                props == null || props.isEmpty()) {</span>
+<span class="nc" id="L799">            return;</span>
+        }
+
+        Map&lt;String, Property&gt; propMap;
+<span class="nc bnc" id="L803" title="All 2 branches missed.">        if (nodeProps.get(node) != null) {</span>
+<span class="nc" id="L804">            propMap = nodeProps.get(node);</span>
+<span class="nc" id="L805">        } else {</span>
+<span class="nc" id="L806">            propMap = new HashMap&lt;String, Property&gt;();</span>
+        }
+
+        // copy node properties from plugin
+<span class="nc bnc" id="L810" title="All 2 branches missed.">        if (props != null) {</span>
+<span class="nc bnc" id="L811" title="All 2 branches missed.">            for (Property prop : props) {</span>
+<span class="nc" id="L812">                propMap.put(prop.getName(), prop);</span>
+            }
+        }
+<span class="nc" id="L815">        addNodeProps(node, propMap);</span>
+
+        /* notify node listeners */
+<span class="nc" id="L818">        notifyNode(node, UpdateType.CHANGED, propMap);</span>
+<span class="nc" id="L819">    }</span>
+
+    @Override
+    public void updateNode(Node node, UpdateType type, Set&lt;Property&gt; props) {
+<span class="nc" id="L823">        log.debug(&quot;updateNode: {} type {} props {} for container {}&quot;,</span>
+<span class="nc" id="L824">                new Object[] { node, type, props, containerName });</span>
+<span class="nc bnc" id="L825" title="All 4 branches missed.">        switch (type) {</span>
+        case ADDED:
+<span class="nc" id="L827">            addNode(node, props);</span>
+<span class="nc" id="L828">            break;</span>
+        case CHANGED:
+<span class="nc" id="L830">            updateNode(node, props);</span>
+<span class="nc" id="L831">            break;</span>
+        case REMOVED:
+<span class="nc" id="L833">            removeNode(node);</span>
+<span class="nc" id="L834">            break;</span>
+        default:
+            break;
+        }
+<span class="nc" id="L838">    }</span>
+
+    @Override
+    public void updateNodeConnector(NodeConnector nodeConnector,
+            UpdateType type, Set&lt;Property&gt; props) {
+<span class="nc" id="L843">        Node node = nodeConnector.getNode();</span>
+<span class="nc" id="L844">        Map&lt;String, Property&gt; propMap = new HashMap&lt;String, Property&gt;();</span>
+
+<span class="nc" id="L846">        log.debug(&quot;updateNodeConnector: {} type {} props {} for container {}&quot;,</span>
+<span class="nc" id="L847">                new Object[] { nodeConnector, type, props, containerName });</span>
+
+<span class="nc bnc" id="L849" title="All 2 branches missed.">        if (nodeConnectorProps == null) {</span>
+<span class="nc" id="L850">            return;</span>
+        }
+
+<span class="nc bnc" id="L853" title="All 3 branches missed.">        switch (type) {</span>
+        case ADDED:
+        case CHANGED:
+<span class="nc bnc" id="L856" title="All 2 branches missed.">            if (props != null) {</span>
+<span class="nc bnc" id="L857" title="All 2 branches missed.">                for (Property prop : props) {</span>
+<span class="nc" id="L858">                    addNodeConnectorProp(nodeConnector, prop);</span>
+<span class="nc" id="L859">                    propMap.put(prop.getName(), prop);</span>
+                }
+<span class="nc" id="L861">            } else {</span>
+<span class="nc" id="L862">                addNodeConnectorProp(nodeConnector, null);</span>
+<span class="nc" id="L863">                addNodeProps(node, null);</span>
+            }
+
+            // check if span is configed
+<span class="nc" id="L867">            addSpanPort(nodeConnector);</span>
+<span class="nc" id="L868">            break;</span>
+        case REMOVED:
+<span class="nc" id="L870">            removeNodeConnectorAllProps(nodeConnector);</span>
+<span class="nc" id="L871">            removeNodeProps(node);</span>
+
+            // clean up span config
+<span class="nc" id="L874">            removeSpanPort(nodeConnector);</span>
+<span class="nc" id="L875">            break;</span>
+        default:
+            break;
+        }
+
+<span class="nc" id="L880">        notifyNodeConnector(nodeConnector, type, propMap);</span>
+<span class="nc" id="L881">    }</span>
+
+    @Override
+    public Set&lt;Node&gt; getNodes() {
+<span class="nc bnc" id="L885" title="All 2 branches missed.">        return (nodeProps != null) ? new HashSet&lt;Node&gt;(nodeProps.keySet())</span>
+<span class="nc" id="L886">                : null;</span>
+    }
+
+    /*
+     * Returns a copy of a list of properties for a given node
+     *
+     * (non-Javadoc)
+     *
+     * @see
+     * org.opendaylight.controller.switchmanager.ISwitchManager#getNodeProps
+     * (org.opendaylight.controller.sal.core.Node)
+     */
+    @Override
+    public Map&lt;String, Property&gt; getNodeProps(Node node) {
+<span class="nc bnc" id="L900" title="All 2 branches missed.">        if (isDefaultContainer) {</span>
+<span class="nc" id="L901">            Map&lt;String, Property&gt; rv = null;</span>
+<span class="nc bnc" id="L902" title="All 2 branches missed.">            if (this.nodeProps != null) {</span>
+<span class="nc" id="L903">                rv = this.nodeProps.get(node);</span>
+<span class="nc bnc" id="L904" title="All 2 branches missed.">                if (rv != null) {</span>
+                    /* make a copy of it */
+<span class="nc" id="L906">                    rv = new HashMap&lt;String, Property&gt;(rv);</span>
+                }
+            }
+<span class="nc" id="L909">            return rv;</span>
+        } else {
+            // get it from default container
+<span class="nc" id="L912">            ISwitchManager defaultSwitchManager = (ISwitchManager) ServiceHelper</span>
+<span class="nc" id="L913">                    .getInstance(ISwitchManager.class,</span>
+<span class="nc" id="L914">                            GlobalConstants.DEFAULT.toString(), this);</span>
+<span class="nc" id="L915">            return defaultSwitchManager.getNodeProps(node);</span>
+        }
+    }
+
+    @Override
+    public Property getNodeProp(Node node, String propName) {
+<span class="nc" id="L921">        Map&lt;String, Property&gt; propMap = getNodeProps(node);</span>
+<span class="nc bnc" id="L922" title="All 2 branches missed.">        return (propMap != null) ? propMap.get(propName) : null;</span>
+    }
+
+    @Override
+    public void setNodeProp(Node node, Property prop) {
+        /* Get a copy of the property map */
+<span class="nc" id="L928">        Map&lt;String, Property&gt; propMap = getNodeProps(node);</span>
+<span class="nc bnc" id="L929" title="All 2 branches missed.">        if (propMap == null) {</span>
+<span class="nc" id="L930">            return;</span>
+        }
+
+<span class="nc" id="L933">        propMap.put(prop.getName(), prop);</span>
+<span class="nc" id="L934">        this.nodeProps.put(node, propMap);</span>
+<span class="nc" id="L935">    }</span>
+
+    @Override
+    public Status removeNodeProp(Node node, String propName) {
+<span class="nc" id="L939">        Map&lt;String, Property&gt; propMap = getNodeProps(node);</span>
+<span class="nc bnc" id="L940" title="All 2 branches missed.">        if (propMap != null) {</span>
+<span class="nc" id="L941">            propMap.remove(propName);</span>
+<span class="nc" id="L942">            this.nodeProps.put(node, propMap);</span>
+        }
+<span class="nc" id="L944">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    @Override
+    public Status removeNodeAllProps(Node node) {
+<span class="nc" id="L949">        this.nodeProps.remove(node);</span>
+<span class="nc" id="L950">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    @Override
+    public Set&lt;NodeConnector&gt; getUpNodeConnectors(Node node) {
+<span class="nc bnc" id="L955" title="All 2 branches missed.">        if (nodeConnectorProps == null) {</span>
+<span class="nc" id="L956">            return null;</span>
+        }
+
+<span class="nc" id="L959">        Set&lt;NodeConnector&gt; nodeConnectorSet = new HashSet&lt;NodeConnector&gt;();</span>
+<span class="nc bnc" id="L960" title="All 2 branches missed.">        for (NodeConnector nodeConnector : nodeConnectorProps.keySet()) {</span>
+<span class="nc bnc" id="L961" title="All 2 branches missed.">            if (!nodeConnector.getNode().equals(node)) {</span>
+<span class="nc" id="L962">                continue;</span>
+            }
+<span class="nc bnc" id="L964" title="All 2 branches missed.">            if (isNodeConnectorEnabled(nodeConnector)) {</span>
+<span class="nc" id="L965">                nodeConnectorSet.add(nodeConnector);</span>
+            }
+        }
+
+<span class="nc" id="L969">        return nodeConnectorSet;</span>
+    }
+
+    @Override
+    public Set&lt;NodeConnector&gt; getNodeConnectors(Node node) {
+<span class="nc bnc" id="L974" title="All 2 branches missed.">        if (nodeConnectorProps == null) {</span>
+<span class="nc" id="L975">            return null;</span>
+        }
+
+<span class="nc" id="L978">        Set&lt;NodeConnector&gt; nodeConnectorSet = new HashSet&lt;NodeConnector&gt;();</span>
+<span class="nc bnc" id="L979" title="All 2 branches missed.">        for (NodeConnector nodeConnector : nodeConnectorProps.keySet()) {</span>
+<span class="nc bnc" id="L980" title="All 2 branches missed.">            if (!nodeConnector.getNode().equals(node)) {</span>
+<span class="nc" id="L981">                continue;</span>
+            }
+<span class="nc" id="L983">            nodeConnectorSet.add(nodeConnector);</span>
+        }
+
+<span class="nc" id="L986">        return nodeConnectorSet;</span>
+    }
+
+    @Override
+    public Set&lt;NodeConnector&gt; getPhysicalNodeConnectors(Node node) {
+<span class="nc bnc" id="L991" title="All 2 branches missed.">        if (nodeConnectorProps == null) {</span>
+<span class="nc" id="L992">            return null;</span>
+        }
+
+<span class="nc" id="L995">        Set&lt;NodeConnector&gt; nodeConnectorSet = new HashSet&lt;NodeConnector&gt;();</span>
+<span class="nc bnc" id="L996" title="All 2 branches missed.">        for (NodeConnector nodeConnector : nodeConnectorProps.keySet()) {</span>
+<span class="nc bnc" id="L997" title="All 2 branches missed.">            if (!nodeConnector.getNode().equals(node)</span>
+<span class="nc bnc" id="L998" title="All 2 branches missed.">                    || isSpecial(nodeConnector)) {</span>
+<span class="nc" id="L999">                continue;</span>
+            }
+<span class="nc" id="L1001">            nodeConnectorSet.add(nodeConnector);</span>
+        }
+
+<span class="nc" id="L1004">        return nodeConnectorSet;</span>
+    }
+
+    @Override
+    public Map&lt;String, Property&gt; getNodeConnectorProps(
+            NodeConnector nodeConnector) {
+<span class="nc bnc" id="L1010" title="All 2 branches missed.">        if (isDefaultContainer) {</span>
+<span class="nc" id="L1011">            Map&lt;String, Property&gt; rv = null;</span>
+<span class="nc bnc" id="L1012" title="All 2 branches missed.">            if (this.nodeConnectorProps != null) {</span>
+<span class="nc" id="L1013">                rv = this.nodeConnectorProps.get(nodeConnector);</span>
+<span class="nc bnc" id="L1014" title="All 2 branches missed.">                if (rv != null) {</span>
+<span class="nc" id="L1015">                    rv = new HashMap&lt;String, Property&gt;(rv);</span>
+                }
+            }
+<span class="nc" id="L1018">            return rv;</span>
+        } else {
+            // get it from default container
+<span class="nc" id="L1021">            ISwitchManager defaultSwitchManager = (ISwitchManager) ServiceHelper</span>
+<span class="nc" id="L1022">                    .getInstance(ISwitchManager.class,</span>
+<span class="nc" id="L1023">                            GlobalConstants.DEFAULT.toString(), this);</span>
+<span class="nc" id="L1024">            return defaultSwitchManager.getNodeConnectorProps(nodeConnector);</span>
+        }
+    }
+
+    @Override
+    public Property getNodeConnectorProp(NodeConnector nodeConnector,
+            String propName) {
+<span class="nc" id="L1031">        Map&lt;String, Property&gt; propMap = getNodeConnectorProps(nodeConnector);</span>
+<span class="nc bnc" id="L1032" title="All 2 branches missed.">        return (propMap != null) ? propMap.get(propName) : null;</span>
+    }
+
+    private byte[] getHardwareMAC() {
+        Enumeration&lt;NetworkInterface&gt; nis;
+        try {
+<span class="nc" id="L1038">            nis = NetworkInterface.getNetworkInterfaces();</span>
+<span class="nc" id="L1039">        } catch (SocketException e1) {</span>
+<span class="nc" id="L1040">            log.error(&quot;&quot;,e1);</span>
+<span class="nc" id="L1041">            return null;</span>
+        }
+<span class="nc" id="L1043">        byte[] MAC = null;</span>
+<span class="nc bnc" id="L1044" title="All 2 branches missed.">        for (; nis.hasMoreElements();) {</span>
+<span class="nc" id="L1045">            NetworkInterface ni = nis.nextElement();</span>
+            try {
+<span class="nc" id="L1047">                MAC = ni.getHardwareAddress();</span>
+<span class="nc" id="L1048">            } catch (SocketException e) {</span>
+<span class="nc" id="L1049">                log.error(&quot;&quot;,e);</span>
+            }
+<span class="nc bnc" id="L1051" title="All 2 branches missed.">            if (MAC != null) {</span>
+<span class="nc" id="L1052">                return MAC;</span>
+            }
+        }
+<span class="nc" id="L1055">        return null;</span>
+    }
+
+    @Override
+    public byte[] getControllerMAC() {
+<span class="nc" id="L1060">        return MAC;</span>
+    }
+
+    @Override
+    public boolean isHostRefreshEnabled() {
+<span class="nc" id="L1065">        return hostRefresh;</span>
+    }
+
+    @Override
+    public int getHostRetryCount() {
+<span class="nc" id="L1070">        return hostRetryCount;</span>
+    }
+
+    @Override
+    public NodeConnector getNodeConnector(Node node, String nodeConnectorName) {
+<span class="nc bnc" id="L1075" title="All 2 branches missed.">        if (nodeConnectorNames == null) {</span>
+<span class="nc" id="L1076">            return null;</span>
+        }
+
+<span class="nc" id="L1079">        Map&lt;String, NodeConnector&gt; map = nodeConnectorNames.get(node);</span>
+<span class="nc bnc" id="L1080" title="All 2 branches missed.">        if (map == null) {</span>
+<span class="nc" id="L1081">            return null;</span>
+        }
+
+<span class="nc" id="L1084">        return map.get(nodeConnectorName);</span>
+    }
+
+    /**
+     * Adds a node connector and its property if any
+     *
+     * @param nodeConnector
+     *            {@link org.opendaylight.controller.sal.core.NodeConnector}
+     * @param propName
+     *            name of {@link org.opendaylight.controller.sal.core.Property}
+     * @return success or failed reason
+     */
+    @Override
+    public Status addNodeConnectorProp(NodeConnector nodeConnector,
+            Property prop) {
+<span class="nc" id="L1099">        Map&lt;String, Property&gt; propMap = getNodeConnectorProps(nodeConnector);</span>
+
+<span class="nc bnc" id="L1101" title="All 2 branches missed.">        if (propMap == null) {</span>
+<span class="nc" id="L1102">            propMap = new HashMap&lt;String, Property&gt;();</span>
+        }
+
+        // Just add the nodeConnector if prop is not available (in a non-default
+        // container)
+<span class="nc bnc" id="L1107" title="All 2 branches missed.">        if (prop == null) {</span>
+<span class="nc" id="L1108">            nodeConnectorProps.put(nodeConnector, propMap);</span>
+<span class="nc" id="L1109">            return new Status(StatusCode.SUCCESS, null);</span>
+        }
+
+<span class="nc" id="L1112">        propMap.put(prop.getName(), prop);</span>
+<span class="nc" id="L1113">        nodeConnectorProps.put(nodeConnector, propMap);</span>
+
+<span class="nc bnc" id="L1115" title="All 2 branches missed.">        if (prop.getName().equals(Name.NamePropName)) {</span>
+<span class="nc bnc" id="L1116" title="All 2 branches missed.">            if (nodeConnectorNames != null) {</span>
+<span class="nc" id="L1117">                Node node = nodeConnector.getNode();</span>
+<span class="nc" id="L1118">                Map&lt;String, NodeConnector&gt; map = nodeConnectorNames.get(node);</span>
+<span class="nc bnc" id="L1119" title="All 2 branches missed.">                if (map == null) {</span>
+<span class="nc" id="L1120">                    map = new HashMap&lt;String, NodeConnector&gt;();</span>
+                }
+
+<span class="nc" id="L1123">                map.put(((Name) prop).getValue(), nodeConnector);</span>
+<span class="nc" id="L1124">                nodeConnectorNames.put(node, map);</span>
+            }
+        }
+
+<span class="nc" id="L1128">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    /**
+     * Removes one property of a node connector
+     *
+     * @param nodeConnector
+     *            {@link org.opendaylight.controller.sal.core.NodeConnector}
+     * @param propName
+     *            name of {@link org.opendaylight.controller.sal.core.Property}
+     * @return success or failed reason
+     */
+    @Override
+    public Status removeNodeConnectorProp(NodeConnector nodeConnector,
+            String propName) {
+<span class="nc" id="L1143">        Map&lt;String, Property&gt; propMap = getNodeConnectorProps(nodeConnector);</span>
+
+<span class="nc bnc" id="L1145" title="All 2 branches missed.">        if (propMap == null) {</span>
+            /* Nothing to remove */
+<span class="nc" id="L1147">            return new Status(StatusCode.SUCCESS, null);</span>
+        }
+
+<span class="nc" id="L1150">        propMap.remove(propName);</span>
+<span class="nc" id="L1151">        nodeConnectorProps.put(nodeConnector, propMap);</span>
+
+<span class="nc bnc" id="L1153" title="All 2 branches missed.">        if (nodeConnectorNames != null) {</span>
+<span class="nc" id="L1154">            Name name = ((Name) getNodeConnectorProp(nodeConnector,</span>
+<span class="nc" id="L1155">                    Name.NamePropName));</span>
+<span class="nc bnc" id="L1156" title="All 2 branches missed.">            if (name != null) {</span>
+<span class="nc" id="L1157">                Node node = nodeConnector.getNode();</span>
+<span class="nc" id="L1158">                Map&lt;String, NodeConnector&gt; map = nodeConnectorNames.get(node);</span>
+<span class="nc bnc" id="L1159" title="All 2 branches missed.">                if (map != null) {</span>
+<span class="nc" id="L1160">                    map.remove(name.getValue());</span>
+<span class="nc" id="L1161">                    nodeConnectorNames.put(node, map);</span>
+                }
+            }
+        }
+
+<span class="nc" id="L1166">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    /**
+     * Removes all the properties of a node connector
+     *
+     * @param nodeConnector
+     *            {@link org.opendaylight.controller.sal.core.NodeConnector}
+     * @return success or failed reason
+     */
+    @Override
+    public Status removeNodeConnectorAllProps(NodeConnector nodeConnector) {
+<span class="nc bnc" id="L1178" title="All 2 branches missed.">        if (nodeConnectorNames != null) {</span>
+<span class="nc" id="L1179">            Name name = ((Name) getNodeConnectorProp(nodeConnector,</span>
+<span class="nc" id="L1180">                    Name.NamePropName));</span>
+<span class="nc bnc" id="L1181" title="All 2 branches missed.">            if (name != null) {</span>
+<span class="nc" id="L1182">                Node node = nodeConnector.getNode();</span>
+<span class="nc" id="L1183">                Map&lt;String, NodeConnector&gt; map = nodeConnectorNames.get(node);</span>
+<span class="nc bnc" id="L1184" title="All 2 branches missed.">                if (map != null) {</span>
+<span class="nc" id="L1185">                    map.remove(name.getValue());</span>
+<span class="nc" id="L1186">                    nodeConnectorNames.put(node, map);</span>
+                }
+            }
+        }
+<span class="nc" id="L1190">        nodeConnectorProps.remove(nodeConnector);</span>
+
+<span class="nc" id="L1192">        return new Status(StatusCode.SUCCESS, null);</span>
+    }
+
+    /**
+     * Function called by the dependency manager when all the required
+     * dependencies are satisfied
+     *
+     */
+    void init(Component c) {
+<span class="nc" id="L1201">        Dictionary&lt;?, ?&gt; props = c.getServiceProperties();</span>
+<span class="nc bnc" id="L1202" title="All 2 branches missed.">        if (props != null) {</span>
+<span class="nc" id="L1203">            this.containerName = (String) props.get(&quot;containerName&quot;);</span>
+<span class="nc" id="L1204">            log.trace(&quot;Running containerName: {}&quot;, this.containerName);</span>
+<span class="nc" id="L1205">        } else {</span>
+            // In the Global instance case the containerName is empty
+<span class="nc" id="L1207">            this.containerName = &quot;&quot;;</span>
+        }
+<span class="nc" id="L1209">        isDefaultContainer = containerName.equals(GlobalConstants.DEFAULT</span>
+<span class="nc" id="L1210">                .toString());</span>
+
+<span class="nc" id="L1212">        startUp();</span>
+<span class="nc" id="L1213">    }</span>
+
+    /**
+     * Function called by the dependency manager when at least one dependency
+     * become unsatisfied or when the component is shutting down because for
+     * example bundle is being stopped.
+     *
+     */
+    void destroy() {
+<span class="nc" id="L1222">        shutDown();</span>
+<span class="nc" id="L1223">    }</span>
+
+    /**
+     * Function called by dependency manager after &quot;init ()&quot; is called and after
+     * the services provided by the class are registered in the service registry
+     *
+     */
+    void start() {
+        // OSGI console
+<span class="nc" id="L1232">        registerWithOSGIConsole();</span>
+<span class="nc" id="L1233">    }</span>
+
+    /**
+     * Function called after registered the service in OSGi service registry.
+     */
+    void started() {
+        // solicit for existing inventories
+<span class="nc" id="L1240">        getInventories();</span>
+<span class="nc" id="L1241">    }</span>
+
+    /**
+     * Function called by the dependency manager before the services exported by
+     * the component are unregistered, this will be followed by a &quot;destroy ()&quot;
+     * calls
+     *
+     */
+    void stop() {
+<span class="nc" id="L1250">    }</span>
+
+    public void setInventoryService(IInventoryService service) {
+<span class="nc" id="L1253">        log.trace(&quot;Got inventory service set request {}&quot;, service);</span>
+<span class="nc" id="L1254">        this.inventoryService = service;</span>
+
+        // solicit for existing inventories
+<span class="nc" id="L1257">        getInventories();</span>
+<span class="nc" id="L1258">    }</span>
+
+    public void unsetInventoryService(IInventoryService service) {
+<span class="nc" id="L1261">        log.trace(&quot;Got a service UNset request&quot;);</span>
+<span class="nc" id="L1262">        this.inventoryService = null;</span>
+
+        // clear existing inventories
+<span class="nc" id="L1265">        clearInventories();</span>
+<span class="nc" id="L1266">    }</span>
+
+    public void setSwitchManagerAware(ISwitchManagerAware service) {
+<span class="nc" id="L1269">        log.trace(&quot;Got inventory service set request {}&quot;, service);</span>
+<span class="nc bnc" id="L1270" title="All 2 branches missed.">        if (this.switchManagerAware != null) {</span>
+<span class="nc" id="L1271">            this.switchManagerAware.add(service);</span>
+        }
+
+        // bulk update for newly joined
+<span class="nc" id="L1275">        switchManagerAwareNotify(service);</span>
+<span class="nc" id="L1276">    }</span>
+
+    public void unsetSwitchManagerAware(ISwitchManagerAware service) {
+<span class="nc" id="L1279">        log.trace(&quot;Got a service UNset request&quot;);</span>
+<span class="nc bnc" id="L1280" title="All 2 branches missed.">        if (this.switchManagerAware != null) {</span>
+<span class="nc" id="L1281">            this.switchManagerAware.remove(service);</span>
+        }
+<span class="nc" id="L1283">    }</span>
+
+    public void setInventoryListener(IInventoryListener service) {
+<span class="nc" id="L1286">        log.trace(&quot;Got inventory listener set request {}&quot;, service);</span>
+<span class="nc bnc" id="L1287" title="All 2 branches missed.">        if (this.inventoryListeners != null) {</span>
+<span class="nc" id="L1288">            this.inventoryListeners.add(service);</span>
+        }
+
+        // bulk update for newly joined
+<span class="nc" id="L1292">        bulkUpdateService(service);</span>
+<span class="nc" id="L1293">    }</span>
+
+    public void unsetInventoryListener(IInventoryListener service) {
+<span class="nc" id="L1296">        log.trace(&quot;Got a service UNset request&quot;);</span>
+<span class="nc bnc" id="L1297" title="All 2 branches missed.">        if (this.inventoryListeners != null) {</span>
+<span class="nc" id="L1298">            this.inventoryListeners.remove(service);</span>
+        }
+<span class="nc" id="L1300">    }</span>
+
+    public void setSpanAware(ISpanAware service) {
+<span class="nc" id="L1303">        log.trace(&quot;Got SpanAware set request {}&quot;, service);</span>
+<span class="nc bnc" id="L1304" title="All 2 branches missed.">        if (this.spanAware != null) {</span>
+<span class="nc" id="L1305">            this.spanAware.add(service);</span>
+        }
+
+        // bulk update for newly joined
+<span class="nc" id="L1309">        spanAwareNotify(service);</span>
+<span class="nc" id="L1310">    }</span>
+
+    public void unsetSpanAware(ISpanAware service) {
+<span class="nc" id="L1313">        log.trace(&quot;Got a service UNset request&quot;);</span>
+<span class="nc bnc" id="L1314" title="All 2 branches missed.">        if (this.spanAware != null) {</span>
+<span class="nc" id="L1315">            this.spanAware.remove(service);</span>
+        }
+<span class="nc" id="L1317">    }</span>
+
+    void setClusterContainerService(IClusterContainerServices s) {
+<span class="nc" id="L1320">        log.trace(&quot;Cluster Service set&quot;);</span>
+<span class="nc" id="L1321">        this.clusterContainerService = s;</span>
+<span class="nc" id="L1322">    }</span>
+
+    void unsetClusterContainerService(IClusterContainerServices s) {
+<span class="nc bnc" id="L1325" title="All 2 branches missed.">        if (this.clusterContainerService == s) {</span>
+<span class="nc" id="L1326">            log.trace(&quot;Cluster Service removed!&quot;);</span>
+<span class="nc" id="L1327">            this.clusterContainerService = null;</span>
+        }
+<span class="nc" id="L1329">    }</span>
+
+    private void getInventories() {
+<span class="nc bnc" id="L1332" title="All 2 branches missed.">        if (inventoryService == null) {</span>
+<span class="nc" id="L1333">            log.trace(&quot;inventory service not avaiable&quot;);</span>
+<span class="nc" id="L1334">            return;</span>
+        }
+
+<span class="nc" id="L1337">        nodeProps = this.inventoryService.getNodeProps();</span>
+<span class="nc" id="L1338">        Set&lt;Node&gt; nodeSet = nodeProps.keySet();</span>
+<span class="nc bnc" id="L1339" title="All 2 branches missed.">        if (nodeSet != null) {</span>
+<span class="nc bnc" id="L1340" title="All 2 branches missed.">            for (Node node : nodeSet) {</span>
+<span class="nc" id="L1341">                log.debug(&quot;getInventories: {} added for container {}&quot;,</span>
+<span class="nc" id="L1342">                        new Object[] { node, containerName });</span>
+<span class="nc" id="L1343">                addNode(node, null);</span>
+            }
+        }
+
+<span class="nc" id="L1347">        nodeConnectorProps = inventoryService.getNodeConnectorProps();</span>
+<span class="nc" id="L1348">    }</span>
+
+    private void clearInventories() {
+<span class="nc" id="L1351">        nodeProps.clear();</span>
+<span class="nc" id="L1352">        nodeConnectorProps.clear();</span>
+<span class="nc" id="L1353">        nodeConnectorNames.clear();</span>
+<span class="nc" id="L1354">        spanNodeConnectors.clear();</span>
+<span class="nc" id="L1355">    }</span>
+
+    private void notifyNode(Node node, UpdateType type,
+            Map&lt;String, Property&gt; propMap) {
+<span class="nc" id="L1359">        synchronized (inventoryListeners) {</span>
+<span class="nc bnc" id="L1360" title="All 2 branches missed.">            for (IInventoryListener service : inventoryListeners) {</span>
+<span class="nc" id="L1361">                service.notifyNode(node, type, propMap);</span>
+            }
+        }
+<span class="nc" id="L1364">    }</span>
+
+    private void notifyNodeConnector(NodeConnector nodeConnector,
+            UpdateType type, Map&lt;String, Property&gt; propMap) {
+<span class="nc" id="L1368">        synchronized (inventoryListeners) {</span>
+<span class="nc bnc" id="L1369" title="All 2 branches missed.">            for (IInventoryListener service : inventoryListeners) {</span>
+<span class="nc" id="L1370">                service.notifyNodeConnector(nodeConnector, type, propMap);</span>
+            }
+        }
+<span class="nc" id="L1373">    }</span>
+
+    /*
+     * For those joined late, bring them up-to-date.
+     */
+    private void switchManagerAwareNotify(ISwitchManagerAware service) {
+<span class="nc bnc" id="L1379" title="All 2 branches missed.">        for (Subnet sub : subnets.values()) {</span>
+<span class="nc" id="L1380">            service.subnetNotify(sub, true);</span>
+        }
+
+<span class="nc bnc" id="L1383" title="All 2 branches missed.">        for (Node node : getNodes()) {</span>
+<span class="nc" id="L1384">            SwitchConfig sc = getSwitchConfig(node.toString());</span>
+<span class="nc bnc" id="L1385" title="All 4 branches missed.">            if ((sc != null) &amp;&amp; isDefaultContainer) {</span>
+<span class="nc" id="L1386">                service.modeChangeNotify(node, sc.isProactive());</span>
+            }
+        }
+<span class="nc" id="L1389">    }</span>
+
+    private void bulkUpdateService(IInventoryListener service) {
+        Map&lt;String, Property&gt; propMap;
+<span class="nc" id="L1393">        UpdateType type = UpdateType.ADDED;</span>
+
+<span class="nc bnc" id="L1395" title="All 2 branches missed.">        for (Node node : getNodes()) {</span>
+<span class="nc" id="L1396">            propMap = nodeProps.get(node);</span>
+<span class="nc" id="L1397">            service.notifyNode(node, type, propMap);</span>
+        }
+
+<span class="nc bnc" id="L1400" title="All 2 branches missed.">        for (NodeConnector nodeConnector : nodeConnectorProps.keySet()) {</span>
+<span class="nc" id="L1401">            propMap = nodeConnectorProps.get(nodeConnector);</span>
+<span class="nc" id="L1402">            service.notifyNodeConnector(nodeConnector, type, propMap);</span>
+        }
+<span class="nc" id="L1404">    }</span>
+
+    private void spanAwareNotify(ISpanAware service) {
+<span class="nc bnc" id="L1407" title="All 2 branches missed.">        for (Node node : getNodes()) {</span>
+<span class="nc bnc" id="L1408" title="All 2 branches missed.">            for (SpanConfig conf : getSpanConfigList(node)) {</span>
+<span class="nc" id="L1409">                service.spanUpdate(node, conf.getPortArrayList(), true);</span>
+            }
+        }
+<span class="nc" id="L1412">    }</span>
+
+    private void registerWithOSGIConsole() {
+<span class="nc" id="L1415">        BundleContext bundleContext = FrameworkUtil.getBundle(this.getClass())</span>
+<span class="nc" id="L1416">                .getBundleContext();</span>
+<span class="nc" id="L1417">        bundleContext.registerService(CommandProvider.class.getName(), this,</span>
+<span class="nc" id="L1418">                null);</span>
+<span class="nc" id="L1419">    }</span>
+
+    @Override
+    public Boolean isNodeConnectorEnabled(NodeConnector nodeConnector) {
+<span class="nc bnc" id="L1423" title="All 2 branches missed.">        if (nodeConnector == null) {</span>
+<span class="nc" id="L1424">            return false;</span>
+        }
+
+<span class="nc" id="L1427">        Config config = (Config) getNodeConnectorProp(nodeConnector,</span>
+<span class="nc" id="L1428">                Config.ConfigPropName);</span>
+<span class="nc" id="L1429">        State state = (State) getNodeConnectorProp(nodeConnector,</span>
+<span class="nc" id="L1430">                State.StatePropName);</span>
+<span class="nc bnc" id="L1431" title="All 4 branches missed.">        return ((config != null) &amp;&amp; (config.getValue() == Config.ADMIN_UP)</span>
+<span class="nc bnc" id="L1432" title="All 4 branches missed.">                &amp;&amp; (state != null) &amp;&amp; (state.getValue() == State.EDGE_UP));</span>
+    }
+
+    @Override
+    public String getHelp() {
+<span class="nc" id="L1437">        StringBuffer help = new StringBuffer();</span>
+<span class="nc" id="L1438">        help.append(&quot;---Switch Manager---\n&quot;);</span>
+<span class="nc" id="L1439">        help.append(&quot;\t pns                    - Print connected nodes\n&quot;);</span>
+<span class="nc" id="L1440">        help.append(&quot;\t pncs &lt;node id&gt;         - Print node connectors for a given node\n&quot;);</span>
+<span class="nc" id="L1441">        help.append(&quot;\t pencs &lt;node id&gt;        - Print enabled node connectors for a given node\n&quot;);</span>
+<span class="nc" id="L1442">        help.append(&quot;\t pdm &lt;node id&gt;          - Print switch ports in device map\n&quot;);</span>
+<span class="nc" id="L1443">        help.append(&quot;\t snt &lt;node id&gt; &lt;tier&gt;   - Set node tier number\n&quot;);</span>
+<span class="nc" id="L1444">        help.append(&quot;\t hostRefresh &lt;on/off/?&gt; - Enable/Disable/Query host refresh\n&quot;);</span>
+<span class="nc" id="L1445">        help.append(&quot;\t hostRetry &lt;count&gt;      - Set host retry count\n&quot;);</span>
+<span class="nc" id="L1446">        return help.toString();</span>
+    }
+
+    public void _pns(CommandInterpreter ci) {
+<span class="nc" id="L1450">        ci.println(&quot;           Node               Type           MAC            Name      Tier&quot;);</span>
+<span class="nc bnc" id="L1451" title="All 2 branches missed.">        if (nodeProps == null) {</span>
+<span class="nc" id="L1452">            return;</span>
+        }
+<span class="nc" id="L1454">        Set&lt;Node&gt; nodeSet = nodeProps.keySet();</span>
+<span class="nc bnc" id="L1455" title="All 2 branches missed.">        if (nodeSet == null) {</span>
+<span class="nc" id="L1456">            return;</span>
+        }
+<span class="nc bnc" id="L1458" title="All 2 branches missed.">        for (Node node : nodeSet) {</span>
+<span class="nc" id="L1459">            Description desc = ((Description) getNodeProp(node,</span>
+<span class="nc" id="L1460">                    Description.propertyName));</span>
+<span class="nc" id="L1461">            Tier tier = ((Tier) getNodeProp(node, Tier.TierPropName));</span>
+<span class="nc bnc" id="L1462" title="All 2 branches missed.">            String nodeName = (desc == null) ? &quot;&quot; : desc.getValue();</span>
+<span class="nc" id="L1463">            MacAddress mac = (MacAddress) getNodeProp(node,</span>
+<span class="nc" id="L1464">                    MacAddress.name);</span>
+<span class="nc bnc" id="L1465" title="All 2 branches missed.">            String macAddr = (mac == null) ? &quot;&quot; : HexEncode</span>
+<span class="nc" id="L1466">                    .bytesToHexStringFormat(mac.getMacAddress());</span>
+<span class="nc bnc" id="L1467" title="All 2 branches missed.">            int tierNum = (tier == null) ? 0 : tier.getValue();</span>
+<span class="nc" id="L1468">            ci.println(node + &quot;     &quot; + node.getType() + &quot;     &quot; + macAddr</span>
+<span class="nc" id="L1469">                    + &quot;     &quot; + nodeName + &quot;     &quot; + tierNum);</span>
+        }
+<span class="nc" id="L1471">        ci.println(&quot;Total number of Nodes: &quot; + nodeSet.size());</span>
+<span class="nc" id="L1472">    }</span>
+
+    public void _pencs(CommandInterpreter ci) {
+<span class="nc" id="L1475">        String st = ci.nextArgument();</span>
+<span class="nc bnc" id="L1476" title="All 2 branches missed.">        if (st == null) {</span>
+<span class="nc" id="L1477">            ci.println(&quot;Please enter node id&quot;);</span>
+<span class="nc" id="L1478">            return;</span>
+        }
+
+<span class="nc" id="L1481">        Node node = Node.fromString(st);</span>
+<span class="nc bnc" id="L1482" title="All 2 branches missed.">        if (node == null) {</span>
+<span class="nc" id="L1483">            ci.println(&quot;Please enter node id&quot;);</span>
+<span class="nc" id="L1484">            return;</span>
+        }
+
+<span class="nc" id="L1487">        Set&lt;NodeConnector&gt; nodeConnectorSet = getUpNodeConnectors(node);</span>
+<span class="nc bnc" id="L1488" title="All 2 branches missed.">        if (nodeConnectorSet == null) {</span>
+<span class="nc" id="L1489">            return;</span>
+        }
+<span class="nc bnc" id="L1491" title="All 2 branches missed.">        for (NodeConnector nodeConnector : nodeConnectorSet) {</span>
+<span class="nc bnc" id="L1492" title="All 2 branches missed.">            if (nodeConnector == null) {</span>
+<span class="nc" id="L1493">                continue;</span>
+            }
+<span class="nc" id="L1495">            ci.println(nodeConnector);</span>
+        }
+<span class="nc" id="L1497">        ci.println(&quot;Total number of NodeConnectors: &quot; + nodeConnectorSet.size());</span>
+<span class="nc" id="L1498">    }</span>
+
+    public void _pncs(CommandInterpreter ci) {
+<span class="nc" id="L1501">        String st = ci.nextArgument();</span>
+<span class="nc bnc" id="L1502" title="All 2 branches missed.">        if (st == null) {</span>
+<span class="nc" id="L1503">            ci.println(&quot;Please enter node id&quot;);</span>
+<span class="nc" id="L1504">            return;</span>
+        }
+
+<span class="nc" id="L1507">        Node node = Node.fromString(st);</span>
+<span class="nc bnc" id="L1508" title="All 2 branches missed.">        if (node == null) {</span>
+<span class="nc" id="L1509">            ci.println(&quot;Please enter node id&quot;);</span>
+<span class="nc" id="L1510">            return;</span>
+        }
+
+<span class="nc" id="L1513">        ci.println(&quot;          NodeConnector               BandWidth(Gbps)     Admin     State&quot;);</span>
+<span class="nc" id="L1514">        Set&lt;NodeConnector&gt; nodeConnectorSet = getNodeConnectors(node);</span>
+<span class="nc bnc" id="L1515" title="All 2 branches missed.">        if (nodeConnectorSet == null) {</span>
+<span class="nc" id="L1516">            return;</span>
+        }
+<span class="nc bnc" id="L1518" title="All 2 branches missed.">        for (NodeConnector nodeConnector : nodeConnectorSet) {</span>
+<span class="nc bnc" id="L1519" title="All 2 branches missed.">            if (nodeConnector == null) {</span>
+<span class="nc" id="L1520">                continue;</span>
+            }
+<span class="nc" id="L1522">            Map&lt;String, Property&gt; propMap = getNodeConnectorProps(nodeConnector);</span>
+<span class="nc" id="L1523">            Bandwidth bw = (Bandwidth) propMap.get(Bandwidth.BandwidthPropName);</span>
+<span class="nc" id="L1524">            Config config = (Config) propMap.get(Config.ConfigPropName);</span>
+<span class="nc" id="L1525">            State state = (State) propMap.get(State.StatePropName);</span>
+<span class="nc" id="L1526">            String out = nodeConnector + &quot;           &quot;;</span>
+<span class="nc bnc" id="L1527" title="All 2 branches missed.">            out += (bw != null) ? bw.getValue() / Math.pow(10, 9) : &quot;    &quot;;</span>
+<span class="nc" id="L1528">            out += &quot;             &quot;;</span>
+<span class="nc bnc" id="L1529" title="All 2 branches missed.">            out += (config != null) ? config.getValue() : &quot; &quot;;</span>
+<span class="nc" id="L1530">            out += &quot;          &quot;;</span>
+<span class="nc bnc" id="L1531" title="All 2 branches missed.">            out += (state != null) ? state.getValue() : &quot; &quot;;</span>
+<span class="nc" id="L1532">            ci.println(out);</span>
+        }
+<span class="nc" id="L1534">        ci.println(&quot;Total number of NodeConnectors: &quot; + nodeConnectorSet.size());</span>
+<span class="nc" id="L1535">    }</span>
+
+    public void _pdm(CommandInterpreter ci) {
+<span class="nc" id="L1538">        String st = ci.nextArgument();</span>
+<span class="nc bnc" id="L1539" title="All 2 branches missed.">        if (st == null) {</span>
+<span class="nc" id="L1540">            ci.println(&quot;Please enter node id&quot;);</span>
+<span class="nc" id="L1541">            return;</span>
+        }
+
+<span class="nc" id="L1544">        Node node = Node.fromString(st);</span>
+<span class="nc bnc" id="L1545" title="All 2 branches missed.">        if (node == null) {</span>
+<span class="nc" id="L1546">            ci.println(&quot;Please enter node id&quot;);</span>
+<span class="nc" id="L1547">            return;</span>
+        }
+
+<span class="nc" id="L1550">        Switch sw = getSwitchByNode(node);</span>
+
+<span class="nc" id="L1552">        ci.println(&quot;          NodeConnector                        Name&quot;);</span>
+<span class="nc bnc" id="L1553" title="All 2 branches missed.">        if (sw == null) {</span>
+<span class="nc" id="L1554">            return;</span>
+        }
+<span class="nc" id="L1556">        Set&lt;NodeConnector&gt; nodeConnectorSet = sw.getNodeConnectors();</span>
+        String nodeConnectorName;
+<span class="nc bnc" id="L1558" title="All 4 branches missed.">        if (nodeConnectorSet != null &amp;&amp; nodeConnectorSet.size() &gt; 0) {</span>
+<span class="nc bnc" id="L1559" title="All 2 branches missed.">            for (NodeConnector nodeConnector : nodeConnectorSet) {</span>
+<span class="nc" id="L1560">                Map&lt;String, Property&gt; propMap = getNodeConnectorProps(nodeConnector);</span>
+<span class="nc bnc" id="L1561" title="All 2 branches missed.">                nodeConnectorName = (propMap == null) ? null : ((Name) propMap</span>
+<span class="nc" id="L1562">                        .get(Name.NamePropName)).getValue();</span>
+<span class="nc bnc" id="L1563" title="All 2 branches missed.">                if (nodeConnectorName != null) {</span>
+<span class="nc" id="L1564">                    Node nd = nodeConnector.getNode();</span>
+<span class="nc bnc" id="L1565" title="All 2 branches missed.">                    if (!nd.equals(node)) {</span>
+<span class="nc" id="L1566">                        log.debug(&quot;node not match {} {}&quot;, nd, node);</span>
+                    }
+<span class="nc" id="L1568">                    Map&lt;String, NodeConnector&gt; map = nodeConnectorNames</span>
+<span class="nc" id="L1569">                            .get(node);</span>
+<span class="nc bnc" id="L1570" title="All 2 branches missed.">                    if (map != null) {</span>
+<span class="nc" id="L1571">                        NodeConnector nc = map.get(nodeConnectorName);</span>
+<span class="nc bnc" id="L1572" title="All 2 branches missed.">                        if (nc == null) {</span>
+<span class="nc" id="L1573">                            log.debug(&quot;no nodeConnector named {}&quot;,</span>
+<span class="nc" id="L1574">                                    nodeConnectorName);</span>
+<span class="nc bnc" id="L1575" title="All 2 branches missed.">                        } else if (!nc.equals(nodeConnector)) {</span>
+<span class="nc" id="L1576">                            log.debug(&quot;nodeConnector not match {} {}&quot;, nc,</span>
+<span class="nc" id="L1577">                                    nodeConnector);</span>
+                        }
+                    }
+                }
+
+<span class="nc" id="L1582">                ci.println(nodeConnector</span>
+<span class="nc" id="L1583">                        + &quot;            &quot;</span>
+<span class="nc bnc" id="L1584" title="All 2 branches missed.">                        + ((nodeConnectorName == null) ? &quot;&quot; : nodeConnectorName)</span>
+<span class="nc" id="L1585">                        + &quot;(&quot; + nodeConnector.getID() + &quot;)&quot;);</span>
+            }
+<span class="nc" id="L1587">            ci.println(&quot;Total number of NodeConnectors: &quot;</span>
+<span class="nc" id="L1588">                    + nodeConnectorSet.size());</span>
+        }
+<span class="nc" id="L1590">    }</span>
+
+    public void _snt(CommandInterpreter ci) {
+<span class="nc" id="L1593">        String st = ci.nextArgument();</span>
+<span class="nc bnc" id="L1594" title="All 2 branches missed.">        if (st == null) {</span>
+<span class="nc" id="L1595">            ci.println(&quot;Please enter node id&quot;);</span>
+<span class="nc" id="L1596">            return;</span>
+        }
+
+<span class="nc" id="L1599">        Node node = Node.fromString(st);</span>
+<span class="nc bnc" id="L1600" title="All 2 branches missed.">        if (node == null) {</span>
+<span class="nc" id="L1601">            ci.println(&quot;Please enter node id&quot;);</span>
+<span class="nc" id="L1602">            return;</span>
+        }
+
+<span class="nc" id="L1605">        st = ci.nextArgument();</span>
+<span class="nc bnc" id="L1606" title="All 2 branches missed.">        if (st == null) {</span>
+<span class="nc" id="L1607">            ci.println(&quot;Please enter tier number&quot;);</span>
+<span class="nc" id="L1608">            return;</span>
+        }
+<span class="nc" id="L1610">        Integer tid = Integer.decode(st);</span>
+<span class="nc" id="L1611">        Tier tier = new Tier(tid);</span>
+<span class="nc" id="L1612">        setNodeProp(node, tier);</span>
+<span class="nc" id="L1613">    }</span>
+
+    public void _hostRefresh(CommandInterpreter ci) {
+<span class="nc" id="L1616">        String mode = ci.nextArgument();</span>
+<span class="nc bnc" id="L1617" title="All 2 branches missed.">        if (mode == null) {</span>
+<span class="nc" id="L1618">            ci.println(&quot;expecting on/off/?&quot;);</span>
+<span class="nc" id="L1619">            return;</span>
+        }
+<span class="nc bnc" id="L1621" title="All 2 branches missed.">        if (mode.toLowerCase().equals(&quot;on&quot;)) {</span>
+<span class="nc" id="L1622">            hostRefresh = true;</span>
+<span class="nc bnc" id="L1623" title="All 2 branches missed.">        } else if (mode.toLowerCase().equals(&quot;off&quot;)) {</span>
+<span class="nc" id="L1624">            hostRefresh = false;</span>
+<span class="nc bnc" id="L1625" title="All 2 branches missed.">        } else if (mode.equals(&quot;?&quot;)) {</span>
+<span class="nc bnc" id="L1626" title="All 2 branches missed.">            if (hostRefresh) {</span>
+<span class="nc" id="L1627">                ci.println(&quot;host refresh is ON&quot;);</span>
+<span class="nc" id="L1628">            } else {</span>
+<span class="nc" id="L1629">                ci.println(&quot;host refresh is OFF&quot;);</span>
+            }
+<span class="nc" id="L1631">        } else {</span>
+<span class="nc" id="L1632">            ci.println(&quot;expecting on/off/?&quot;);</span>
+        }
+<span class="nc" id="L1634">        return;</span>
+    }
+
+    public void _hostRetry(CommandInterpreter ci) {
+<span class="nc" id="L1638">        String retry = ci.nextArgument();</span>
+<span class="nc bnc" id="L1639" title="All 2 branches missed.">        if (retry == null) {</span>
+<span class="nc" id="L1640">            ci.println(&quot;Please enter a valid number. Current retry count is &quot;</span>
+<span class="nc" id="L1641">                    + hostRetryCount);</span>
+<span class="nc" id="L1642">            return;</span>
+        }
+        try {
+<span class="nc" id="L1645">            hostRetryCount = Integer.parseInt(retry);</span>
+<span class="nc" id="L1646">        } catch (Exception e) {</span>
+<span class="nc" id="L1647">            ci.println(&quot;Please enter a valid number&quot;);</span>
+        }
+<span class="nc" id="L1649">        return;</span>
+    }
+
+    @Override
+    public byte[] getNodeMAC(Node node) {
+<span class="nc" id="L1654">        MacAddress mac = (MacAddress) this.getNodeProp(node,</span>
+<span class="nc" id="L1655">                MacAddress.name);</span>
+<span class="nc bnc" id="L1656" title="All 2 branches missed.">        return (mac != null) ? mac.getMacAddress() : null;</span>
+    }
+
+    @Override
+    public boolean isSpecial(NodeConnector p) {
+<span class="nc bnc" id="L1661" title="All 2 branches missed.">        if (p.getType().equals(NodeConnectorIDType.CONTROLLER)</span>
+<span class="nc bnc" id="L1662" title="All 2 branches missed.">                || p.getType().equals(NodeConnectorIDType.ALL)</span>
+<span class="nc bnc" id="L1663" title="All 2 branches missed.">                || p.getType().equals(NodeConnectorIDType.SWSTACK)</span>
+<span class="nc bnc" id="L1664" title="All 2 branches missed.">                || p.getType().equals(NodeConnectorIDType.HWPATH)) {</span>
+<span class="nc" id="L1665">            return true;</span>
+        }
+<span class="nc" id="L1667">        return false;</span>
+    }
+
+    /*
+     * Add span configuration to local cache and notify clients
+     */
+    private void addSpanPorts(Node node, List&lt;NodeConnector&gt; nodeConncetors) {
+<span class="nc" id="L1674">        List&lt;NodeConnector&gt; ncLists = new ArrayList&lt;NodeConnector&gt;();</span>
+
+<span class="nc bnc" id="L1676" title="All 2 branches missed.">        for (NodeConnector nodeConnector : nodeConncetors) {</span>
+<span class="nc bnc" id="L1677" title="All 2 branches missed.">            if (!spanNodeConnectors.contains(nodeConnector)) {</span>
+<span class="nc" id="L1678">                ncLists.add(nodeConnector);</span>
+            }
+        }
+
+<span class="nc bnc" id="L1682" title="All 2 branches missed.">        if (ncLists.size() &gt; 0) {</span>
+<span class="nc" id="L1683">            spanNodeConnectors.addAll(ncLists);</span>
+<span class="nc" id="L1684">            notifySpanPortChange(node, ncLists, true);</span>
+        }
+<span class="nc" id="L1686">    }</span>
+
+    private void addSpanPorts(Node node) {
+<span class="nc bnc" id="L1689" title="All 2 branches missed.">        for (SpanConfig conf : getSpanConfigList(node)) {</span>
+<span class="nc" id="L1690">            addSpanPorts(node, conf.getPortArrayList());</span>
+        }
+<span class="nc" id="L1692">    }</span>
+
+    private void addSpanPort(NodeConnector nodeConncetor) {
+<span class="nc" id="L1695">        List&lt;NodeConnector&gt; ncLists = new ArrayList&lt;NodeConnector&gt;();</span>
+<span class="nc" id="L1696">        ncLists.add(nodeConncetor);</span>
+<span class="nc" id="L1697">        addSpanPorts(nodeConncetor.getNode(), ncLists);</span>
+<span class="nc" id="L1698">    }</span>
+
+    /*
+     * Remove span configuration to local cache and notify clients
+     */
+    private void removeSpanPorts(Node node, List&lt;NodeConnector&gt; nodeConncetors) {
+<span class="nc" id="L1704">        List&lt;NodeConnector&gt; ncLists = new ArrayList&lt;NodeConnector&gt;();</span>
+
+<span class="nc bnc" id="L1706" title="All 2 branches missed.">        for (NodeConnector nodeConnector : nodeConncetors) {</span>
+<span class="nc bnc" id="L1707" title="All 2 branches missed.">            if (spanNodeConnectors.contains(nodeConnector)) {</span>
+<span class="nc" id="L1708">                ncLists.add(nodeConnector);</span>
+            }
+        }
+
+<span class="nc bnc" id="L1712" title="All 2 branches missed.">        if (ncLists.size() &gt; 0) {</span>
+<span class="nc" id="L1713">            spanNodeConnectors.removeAll(ncLists);</span>
+<span class="nc" id="L1714">            notifySpanPortChange(node, ncLists, false);</span>
+        }
+<span class="nc" id="L1716">    }</span>
+
+    private void removeSpanPorts(Node node) {
+<span class="nc bnc" id="L1719" title="All 2 branches missed.">        for (SpanConfig conf : getSpanConfigList(node)) {</span>
+<span class="nc" id="L1720">            addSpanPorts(node, conf.getPortArrayList());</span>
+        }
+<span class="nc" id="L1722">    }</span>
+
+    private void removeSpanPort(NodeConnector nodeConncetor) {
+<span class="nc" id="L1725">        List&lt;NodeConnector&gt; ncLists = new ArrayList&lt;NodeConnector&gt;();</span>
+<span class="nc" id="L1726">        ncLists.add(nodeConncetor);</span>
+<span class="nc" id="L1727">        removeSpanPorts(nodeConncetor.getNode(), ncLists);</span>
+<span class="nc" id="L1728">    }</span>
+
+    private void addNodeProps(Node node, Map&lt;String, Property&gt; propMap) {
+<span class="nc bnc" id="L1731" title="All 2 branches missed.">        if (propMap == null) {</span>
+<span class="nc" id="L1732">            propMap = new HashMap&lt;String, Property&gt;();</span>
+        }
+<span class="nc" id="L1734">        nodeProps.put(node, propMap);</span>
+<span class="nc" id="L1735">    }</span>
+
+    private void removeNodeProps(Node node) {
+<span class="nc bnc" id="L1738" title="All 2 branches missed.">        if (getUpNodeConnectors(node).size() == 0) {</span>
+<span class="nc" id="L1739">            nodeProps.remove(node);</span>
+        }
+<span class="nc" id="L1741">    }</span>
+
+    @Override
+    public Status saveConfiguration() {
+<span class="nc" id="L1745">        return saveSwitchConfig();</span>
+    }
+
+    /**
+     * Creates a Name/Tier/Bandwidth Property object based on given property
+     * name and value. Other property types are not supported yet.
+     *
+     * @param propName
+     *            Name of the Property
+     * @param propValue
+     *            Value of the Property
+     * @return {@link org.opendaylight.controller.sal.core.Property}
+     */
+    @Override
+    public Property createProperty(String propName, String propValue) {
+<span class="nc bnc" id="L1760" title="All 2 branches missed.">        if (propName == null) {</span>
+<span class="nc" id="L1761">            log.debug(&quot;propName is null&quot;);</span>
+<span class="nc" id="L1762">            return null;</span>
+        }
+<span class="nc bnc" id="L1764" title="All 2 branches missed.">        if (propValue == null) {</span>
+<span class="nc" id="L1765">            log.debug(&quot;propValue is null&quot;);</span>
+<span class="nc" id="L1766">            return null;</span>
+        }
+
+        try {
+<span class="nc bnc" id="L1770" title="All 2 branches missed.">            if (propName.equalsIgnoreCase(Description.propertyName)) {</span>
+<span class="nc" id="L1771">                return new Description(propValue);</span>
+<span class="nc bnc" id="L1772" title="All 2 branches missed.">            } else if (propName.equalsIgnoreCase(Tier.TierPropName)) {</span>
+<span class="nc" id="L1773">                int tier = Integer.parseInt(propValue);</span>
+<span class="nc" id="L1774">                return new Tier(tier);</span>
+<span class="nc bnc" id="L1775" title="All 2 branches missed.">            } else if (propName.equalsIgnoreCase(Bandwidth.BandwidthPropName)) {</span>
+<span class="nc" id="L1776">                long bw = Long.parseLong(propValue);</span>
+<span class="nc" id="L1777">                return new Bandwidth(bw);</span>
+            } else {
+<span class="nc" id="L1779">                log.debug(&quot;Not able to create {} property&quot;, propName);</span>
+            }
+<span class="nc" id="L1781">        } catch (Exception e) {</span>
+<span class="nc" id="L1782">            log.debug(&quot;createProperty caught exception {}&quot;, e.getMessage());</span>
+        }
+
+<span class="nc" id="L1785">        return null;</span>
+    }
+
+    @Override
+    public String getNodeDescription(Node node) {
+        // Check first if user configured a name
+<span class="nc" id="L1791">        SwitchConfig config = getSwitchConfig(node.toString());</span>
+<span class="nc bnc" id="L1792" title="All 2 branches missed.">        if (config != null) {</span>
+<span class="nc" id="L1793">            String configuredDesc = config.getNodeDescription();</span>
+<span class="nc bnc" id="L1794" title="All 4 branches missed.">            if (configuredDesc != null &amp;&amp; !configuredDesc.isEmpty()) {</span>
+<span class="nc" id="L1795">                return configuredDesc;</span>
+            }
+        }
+
+        // No name configured by user, get the node advertised name
+<span class="nc" id="L1800">        Description desc = (Description) getNodeProp(node,</span>
+<span class="nc" id="L1801">                Description.propertyName);</span>
+<span class="nc bnc" id="L1802" title="All 2 branches missed.">        return (desc == null /* || desc.getValue().equalsIgnoreCase(&quot;none&quot;) */) ? &quot;&quot;</span>
+<span class="nc" id="L1803">                : desc.getValue();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

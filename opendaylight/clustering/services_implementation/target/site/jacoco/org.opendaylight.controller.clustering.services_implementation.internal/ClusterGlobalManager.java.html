@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ClusterGlobalManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">clustering.services-implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.clustering.services_implementation.internal</a> &gt; <span class="el_source">ClusterGlobalManager.java</span></div><h1>ClusterGlobalManager.java</h1><pre class="source lang-java linenums">
+/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.clustering.services_implementation.internal;
+
+import java.util.Map;
+import org.opendaylight.controller.clustering.services.ICacheUpdateAware;
+import org.opendaylight.controller.clustering.services.IClusterGlobalServices;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+<span class="nc" id="L18">public class ClusterGlobalManager</span>
+    extends ClusterManagerCommon
+    implements IClusterGlobalServices {
+<span class="nc" id="L21">    protected static final Logger logger = LoggerFactory.getLogger(ClusterGlobalManager.class);</span>
+
+    @Override
+    void setCacheUpdateAware(Map props, ICacheUpdateAware s) {
+<span class="nc" id="L25">        logger.trace(&quot;setCacheUpdateAware&quot;);</span>
+<span class="nc bnc" id="L26" title="All 2 branches missed.">        if (props.get(&quot;containerName&quot;) != null) {</span>
+            // If we got a reference with the containerName property
+            // that is not what we are looking for, so filter it out.
+<span class="nc" id="L29">            return;</span>
+        }
+<span class="nc" id="L31">        super.setCacheUpdateAware(props, s);</span>
+<span class="nc" id="L32">    }</span>
+
+    @Override
+    void unsetCacheUpdateAware(Map props, ICacheUpdateAware s) {
+<span class="nc" id="L36">        logger.trace(&quot;unsetCacheUpdateAware&quot;);</span>
+<span class="nc bnc" id="L37" title="All 2 branches missed.">        if (props.get(&quot;containerName&quot;) != null) {</span>
+            // If we got a reference with the containerName property
+            // that is not what we are looking for, so filter it out.
+<span class="nc" id="L40">            return;</span>
+        }
+<span class="nc" id="L42">        super.unsetCacheUpdateAware(props, s);</span>
+<span class="nc" id="L43">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

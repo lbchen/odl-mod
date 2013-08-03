@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>IndexedEntity.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hosttracker_new.implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.hosttracker.internal</a> &gt; <span class="el_source">IndexedEntity.java</span></div><h1>IndexedEntity.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2013 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ *
+ *      http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+package org.opendaylight.controller.hosttracker.internal;
+
+import java.util.EnumSet;
+
+import org.opendaylight.controller.hosttracker.Entity;
+import org.opendaylight.controller.hosttracker.IDeviceService;
+import org.opendaylight.controller.hosttracker.IDeviceService.DeviceField;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * This is a thin wrapper around {@link Entity} that allows overriding the
+ * behavior of {@link Object#hashCode()} and {@link Object#equals(Object)} so
+ * that the keying behavior in a hash map can be changed dynamically
+ *
+ * @author readams
+ */
+public class IndexedEntity {
+    protected EnumSet&lt;DeviceField&gt; keyFields;
+    protected Entity entity;
+<span class="nc" id="L37">    private int hashCode = 0;</span>
+<span class="nc" id="L38">    protected static Logger logger = LoggerFactory</span>
+<span class="nc" id="L39">            .getLogger(IndexedEntity.class);</span>
+
+    /**
+     * Create a new {@link IndexedEntity} for the given {@link Entity} using the
+     * provided key fields.
+     *
+     * @param keyFields
+     *            The key fields that will be used for computing
+     *            {@link IndexedEntity#hashCode()} and
+     *            {@link IndexedEntity#equals(Object)}
+     * @param entity
+     *            the entity to wrap
+     */
+    public IndexedEntity(EnumSet&lt;DeviceField&gt; keyFields, Entity entity) {
+<span class="nc" id="L53">        super();</span>
+<span class="nc" id="L54">        this.keyFields = keyFields;</span>
+<span class="nc" id="L55">        this.entity = entity;</span>
+<span class="nc" id="L56">    }</span>
+
+    /**
+     * Check whether this entity has non-null values in any of its key fields
+     *
+     * @return true if any key fields have a non-null value
+     */
+    public boolean hasNonNullKeys() {
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        for (DeviceField f : keyFields) {</span>
+<span class="nc bnc" id="L65" title="All 5 branches missed.">            switch (f) {</span>
+            case MAC:
+<span class="nc" id="L67">                return true;</span>
+            case IPV4:
+<span class="nc bnc" id="L69" title="All 2 branches missed.">                if (entity.getIpv4Address() != null)</span>
+<span class="nc" id="L70">                    return true;</span>
+                break;
+            case SWITCHPORT:
+<span class="nc bnc" id="L73" title="All 2 branches missed.">                if (entity.getPort() != null)</span>
+<span class="nc" id="L74">                    return true;</span>
+                break;
+            case VLAN:
+<span class="nc bnc" id="L77" title="All 2 branches missed.">                if (entity.getVlan() != null)</span>
+<span class="nc" id="L78">                    return true;</span>
+                break;
+            }
+        }
+<span class="nc" id="L82">        return false;</span>
+    }
+
+    @Override
+    public int hashCode() {
+
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (hashCode != 0) {</span>
+<span class="nc" id="L89">            return hashCode;</span>
+        }
+
+<span class="nc" id="L92">        final int prime = 31;</span>
+<span class="nc" id="L93">        hashCode = 1;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        for (DeviceField f : keyFields) {</span>
+<span class="nc bnc" id="L95" title="All 5 branches missed.">            switch (f) {</span>
+            case MAC:
+<span class="nc" id="L97">                hashCode = prime</span>
+<span class="nc" id="L98">                        * hashCode</span>
+<span class="nc" id="L99">                        + (int) (entity.getMacAddress() ^ (entity</span>
+<span class="nc" id="L100">                                .getMacAddress() &gt;&gt;&gt; 32));</span>
+<span class="nc" id="L101">                break;</span>
+            case IPV4:
+<span class="nc" id="L103">                hashCode = prime</span>
+<span class="nc" id="L104">                        * hashCode</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">                        + ((entity.getIpv4Address() == null) ? 0 : entity</span>
+<span class="nc" id="L106">                                .getIpv4Address().hashCode());</span>
+<span class="nc" id="L107">                break;</span>
+            case SWITCHPORT:
+<span class="nc" id="L109">                hashCode = prime</span>
+<span class="nc" id="L110">                        * hashCode</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">                        + ((entity.getPort() == null) ? 0 : entity.getPort()</span>
+<span class="nc" id="L112">                                .hashCode());</span>
+<span class="nc" id="L113">                break;</span>
+            case VLAN:
+<span class="nc" id="L115">                hashCode = prime</span>
+<span class="nc" id="L116">                        * hashCode</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">                        + ((entity.getVlan() == null) ? 0 : entity.getVlan()</span>
+<span class="nc" id="L118">                                .hashCode());</span>
+                break;
+            }
+        }
+<span class="nc" id="L122">        return hashCode;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L128">            return true;</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L130">            return false;</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (getClass() != obj.getClass())</span>
+<span class="nc" id="L132">            return false;</span>
+<span class="nc" id="L133">        IndexedEntity other = (IndexedEntity) obj;</span>
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        if (!keyFields.equals(other.keyFields))</span>
+<span class="nc" id="L136">            return false;</span>
+
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        for (IDeviceService.DeviceField f : keyFields) {</span>
+<span class="nc bnc" id="L139" title="All 5 branches missed.">            switch (f) {</span>
+            case MAC:
+<span class="nc bnc" id="L141" title="All 2 branches missed.">                if (entity.getMacAddress() != other.entity.getMacAddress())</span>
+<span class="nc" id="L142">                    return false;</span>
+                break;
+            case IPV4:
+<span class="nc bnc" id="L145" title="All 2 branches missed.">                if (entity.getIpv4Address() == null) {</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">                    if (other.entity.getIpv4Address() != null)</span>
+<span class="nc" id="L147">                        return false;</span>
+<span class="nc" id="L148">                } else if (!entity.getIpv4Address().equals(</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">                        other.entity.getIpv4Address()))</span>
+<span class="nc" id="L150">                    return false;</span>
+                break;
+            case SWITCHPORT:
+<span class="nc bnc" id="L153" title="All 2 branches missed.">                if (entity.getPort() == null) {</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">                    if (other.entity.getPort() != null)</span>
+<span class="nc" id="L155">                        return false;</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">                } else if (!entity.getPort().equals(other.entity.getPort()))</span>
+<span class="nc" id="L157">                    return false;</span>
+                break;
+            case VLAN:
+<span class="nc bnc" id="L160" title="All 2 branches missed.">                if (entity.getVlan() == null) {</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">                    if (other.entity.getVlan() != null)</span>
+<span class="nc" id="L162">                        return false;</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">                } else if (!entity.getVlan().equals(other.entity.getVlan()))</span>
+<span class="nc" id="L164">                    return false;</span>
+                break;
+            }
+        }
+
+<span class="nc" id="L169">        return true;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

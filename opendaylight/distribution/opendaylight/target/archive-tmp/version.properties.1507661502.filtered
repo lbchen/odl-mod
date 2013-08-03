@@ -1,0 +1,6 @@
+org.opendaylight.controller.version = 0.1
+org.opendaylight.controller.build.scm.version = b8bb7db7c6133e00046e85ead70426eb1e05184d
+org.opendaylight.controller.build.user = user
+org.opendaylight.controller.build.workspace = **********
+org.opendaylight.controller.build.timestamp = 1375475160653
+org.opendaylight.controller.build.machine = **********

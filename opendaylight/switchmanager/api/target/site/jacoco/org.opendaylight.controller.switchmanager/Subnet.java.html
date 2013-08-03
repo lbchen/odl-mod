@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Subnet.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">switchmanager</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.switchmanager</a> &gt; <span class="el_source">Subnet.java</span></div><h1>Subnet.java</h1><pre class="source lang-java linenums">
+/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.switchmanager;
+
+import java.io.Serializable;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.opendaylight.controller.sal.core.NodeConnector;
+
+/**
+ * The class describes subnet information including L3 address, vlan and set of
+ * ports associated with the subnet.
+ */
+public class Subnet implements Serializable {
+    private static final long serialVersionUID = 1L;
+    // Key fields
+    private InetAddress networkAddress;
+    private short subnetMaskLength;
+    // Property fields
+    private short vlan;
+    private Set&lt;NodeConnector&gt; nodeConnectors;
+
+<span class="nc" id="L33">    public Subnet(InetAddress ip, short maskLen, short vlan) {</span>
+<span class="nc" id="L34">        this.networkAddress = ip;</span>
+<span class="nc" id="L35">        this.subnetMaskLength = maskLen;</span>
+<span class="nc" id="L36">        this.vlan = vlan;</span>
+<span class="nc" id="L37">        this.nodeConnectors = new HashSet&lt;NodeConnector&gt;();</span>
+<span class="nc" id="L38">    }</span>
+
+<span class="nc" id="L40">    public Subnet(SubnetConfig conf) {</span>
+<span class="nc" id="L41">        networkAddress = conf.getIPnum();</span>
+<span class="nc" id="L42">        subnetMaskLength = conf.getIPMaskLen();</span>
+<span class="nc" id="L43">        nodeConnectors = conf.getSubnetNodeConnectors();</span>
+<span class="nc" id="L44">    }</span>
+
+    /**
+     * Add NodeConnectors to a subnet
+     *
+     * @param sp Set of NodeConnectors to add to the subnet
+     */
+    public void addNodeConnectors(Set&lt;NodeConnector&gt; sp) {
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (sp == null) {</span>
+<span class="nc" id="L53">            return;</span>
+        }
+
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        for (NodeConnector p : sp) {</span>
+<span class="nc" id="L57">            this.nodeConnectors.add(p);</span>
+        }
+<span class="nc" id="L59">    }</span>
+
+    /**
+     * Delete NodeConnectors from subnet
+     *
+     * @param sp Set of NodeConnectors to add to the subnet
+     */
+    public void deleteNodeConnectors(Set&lt;NodeConnector&gt; sp) {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (sp == null) {</span>
+<span class="nc" id="L68">            return;</span>
+        }
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        for (NodeConnector p : sp) {</span>
+<span class="nc" id="L71">            this.nodeConnectors.remove(p);</span>
+        }
+<span class="nc" id="L73">    }</span>
+
+    /**
+     * Return the list of NodeConnectors configured for this subnet,
+     * could be also an empty set in case of all the known
+     * nodeconnectors.
+     *
+     *
+     * @return The list of NodeConnectors attached to the subnet
+     */
+    public Set&lt;NodeConnector&gt; getNodeConnectors() {
+<span class="nc" id="L84">        return this.nodeConnectors;</span>
+    }
+
+    /**
+     * If the subnet has no node connectors attached to it then it
+     * means that is a whole L2 flat domain
+     *
+     *
+     * @return true if there are no node connectors configured for the
+     * subnet else false
+     */
+    public boolean isFlatLayer2() {
+<span class="nc" id="L96">        return nodeConnectors.isEmpty();</span>
+    }
+
+    /**
+     * getter method
+     *
+     *
+     * @return the Network Address part of the subnet
+     */
+    public InetAddress getNetworkAddress() {
+<span class="nc" id="L106">        return networkAddress;</span>
+    }
+
+    /**
+     * @param networkAddress the networkAddress to set
+     */
+    public Subnet setNetworkAddress(InetAddress networkAddress) {
+<span class="nc" id="L113">        this.networkAddress = networkAddress;</span>
+<span class="nc" id="L114">        return this;</span>
+    }
+
+    /**
+     * getter method
+     *
+     *
+     * @return the subnet mask length
+     */
+    public short getSubnetMaskLength() {
+<span class="nc" id="L124">        return this.subnetMaskLength;</span>
+    }
+
+    public Subnet setSubnetMaskLength(short m) {
+<span class="nc" id="L128">        this.subnetMaskLength = m;</span>
+<span class="nc" id="L129">        return this;</span>
+    }
+
+    /*
+     * returns the prefix of a given IP by applying this subnet's mask
+     */
+    private InetAddress getPrefixForAddress(InetAddress ip) {
+<span class="nc" id="L136">        int bytes = this.subnetMaskLength / 8;</span>
+<span class="nc" id="L137">        int bits = this.subnetMaskLength % 8;</span>
+        byte modifiedByte;
+<span class="nc" id="L139">        byte[] sn = ip.getAddress();</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (bits &gt; 0) {</span>
+<span class="nc" id="L141">            modifiedByte = (byte) (sn[bytes] &gt;&gt; (8 - bits));</span>
+<span class="nc" id="L142">            sn[bytes] = (byte) (modifiedByte &lt;&lt; (8 - bits));</span>
+<span class="nc" id="L143">            bytes++;</span>
+        }
+<span class="nc bnc" id="L145" title="All 2 branches missed.">        for (; bytes &lt; sn.length; bytes++) {</span>
+<span class="nc" id="L146">            sn[bytes] = (byte) (0);</span>
+        }
+        try {
+<span class="nc" id="L149">            return InetAddress.getByAddress(sn);</span>
+<span class="nc" id="L150">        } catch (UnknownHostException e) {</span>
+<span class="nc" id="L151">            return null;</span>
+        }
+    }
+
+    public boolean isSubnetOf(InetAddress ip) {
+<span class="nc bnc" id="L156" title="All 2 branches missed.">        if (ip == null)</span>
+<span class="nc" id="L157">            return false;</span>
+<span class="nc" id="L158">        InetAddress thisPrefix = getPrefixForAddress(this.networkAddress);</span>
+<span class="nc" id="L159">        InetAddress otherPrefix = getPrefixForAddress(ip);</span>
+<span class="nc bnc" id="L160" title="All 4 branches missed.">        if ((thisPrefix == null) || (otherPrefix == null))</span>
+<span class="nc" id="L161">            return false;</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        if (thisPrefix.equals(otherPrefix))</span>
+<span class="nc" id="L163">            return true;</span>
+        else
+<span class="nc" id="L165">            return false;</span>
+    }
+
+    public short getVlan() {
+<span class="nc" id="L169">        return this.vlan;</span>
+    }
+
+    public Subnet setVlan(short i) {
+<span class="nc" id="L173">        this.vlan = i;</span>
+<span class="nc" id="L174">        return this;</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L179">        final int prime = 31;</span>
+<span class="nc" id="L180">        int result = 1;</span>
+<span class="nc" id="L181">        result = prime * result</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">                + ((networkAddress == null) ? 0 : networkAddress.hashCode());</span>
+<span class="nc" id="L183">        result = prime * result</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">                + ((nodeConnectors == null) ? 0 : nodeConnectors.hashCode());</span>
+<span class="nc" id="L185">        result = prime * result + subnetMaskLength;</span>
+<span class="nc" id="L186">        result = prime * result + vlan;</span>
+<span class="nc" id="L187">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L193">            return true;</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L195">            return false;</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">        if (getClass() != obj.getClass())</span>
+<span class="nc" id="L197">            return false;</span>
+<span class="nc" id="L198">        Subnet other = (Subnet) obj;</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        if (networkAddress == null) {</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">            if (other.networkAddress != null)</span>
+<span class="nc" id="L201">                return false;</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">        } else if (!networkAddress.equals(other.networkAddress))</span>
+<span class="nc" id="L203">            return false;</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        if (nodeConnectors == null) {</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">            if (other.nodeConnectors != null)</span>
+<span class="nc" id="L206">                return false;</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        } else if (!nodeConnectors.equals(other.nodeConnectors))</span>
+<span class="nc" id="L208">            return false;</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        if (subnetMaskLength != other.subnetMaskLength)</span>
+<span class="nc" id="L210">            return false;</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">        if (vlan != other.vlan)</span>
+<span class="nc" id="L212">            return false;</span>
+<span class="nc" id="L213">        return true;</span>
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+<span class="nc" id="L221">        return (&quot;Subnet [networkAddress=&quot; + networkAddress.getHostAddress()</span>
+<span class="nc" id="L222">                + &quot;/&quot; + subnetMaskLength</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">                + ((vlan == 0) ? &quot;&quot; : (&quot; vlan=&quot; + vlan)) + &quot; &quot;</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">                + ((isFlatLayer2()) ? &quot;{[*, *]}&quot; : nodeConnectors.toString()) + &quot;]&quot;);</span>
+    }
+
+    public boolean hasNodeConnector(NodeConnector p) {
+<span class="nc bnc" id="L228" title="All 2 branches missed.">        if (p == null) {</span>
+<span class="nc" id="L229">            return false;</span>
+        }
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if (this.isFlatLayer2()) {</span>
+<span class="nc" id="L232">            return true;</span>
+        }
+<span class="nc" id="L234">        return this.nodeConnectors.contains(p);</span>
+    }
+
+    public boolean isMutualExclusive(Subnet otherSubnet) {
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        if (this.networkAddress.getClass() != otherSubnet.networkAddress</span>
+<span class="nc" id="L239">                .getClass())</span>
+<span class="nc" id="L240">            return true;</span>
+<span class="nc bnc" id="L241" title="All 2 branches missed.">        if (this.isSubnetOf(otherSubnet.getNetworkAddress())) {</span>
+<span class="nc" id="L242">            return false;</span>
+        }
+<span class="nc bnc" id="L244" title="All 2 branches missed.">        if (otherSubnet.isSubnetOf(this.getNetworkAddress())) {</span>
+<span class="nc" id="L245">            return false;</span>
+        }
+<span class="nc" id="L247">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.opendaylight.controller.northbound.integrationtest.NorthboundIT" time="82.401" tests="6" errors="2" skipped="0" failures="0">
+  <properties>
+    <property name="java.runtime.name" value="Java(TM) SE Runtime Environment"/>
+    <property name="sun.boot.library.path" value="/usr/lib/jvm/java-7-oracle/jre/lib/amd64"/>
+    <property name="java.vm.version" value="23.25-b01"/>
+    <property name="java.vm.vendor" value="Oracle Corporation"/>
+    <property name="java.vendor.url" value="http://java.oracle.com/"/>
+    <property name="path.separator" value=":"/>
+    <property name="guice.disable.misplaced.annotation.check" value="true"/>
+    <property name="java.vm.name" value="Java HotSpot(TM) 64-Bit Server VM"/>
+    <property name="file.encoding.pkg" value="sun.io"/>
+    <property name="user.country" value="US"/>
+    <property name="sun.java.launcher" value="SUN_STANDARD"/>
+    <property name="sun.os.patch.level" value="unknown"/>
+    <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
+    <property name="user.dir" value="/home/user/controller/opendaylight/distribution/opendaylight"/>
+    <property name="java.runtime.version" value="1.7.0_25-b15"/>
+    <property name="java.awt.graphicsenv" value="sun.awt.X11GraphicsEnvironment"/>
+    <property name="java.endorsed.dirs" value="/usr/lib/jvm/java-7-oracle/jre/lib/endorsed"/>
+    <property name="os.arch" value="amd64"/>
+    <property name="java.io.tmpdir" value="/tmp"/>
+    <property name="line.separator" value="&#10;"/>
+    <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
+    <property name="os.name" value="Linux"/>
+    <property name="classworlds.conf" value="/usr/share/maven/bin/m2.conf"/>
+    <property name="sun.jnu.encoding" value="UTF-8"/>
+    <property name="java.library.path" value="/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib"/>
+    <property name="java.specification.name" value="Java Platform API Specification"/>
+    <property name="java.class.version" value="51.0"/>
+    <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
+    <property name="os.version" value="3.5.0-23-generic"/>
+    <property name="user.home" value="/root"/>
+    <property name="user.timezone" value="America/Los_Angeles"/>
+    <property name="java.awt.printerjob" value="sun.print.PSPrinterJob"/>
+    <property name="file.encoding" value="UTF-8"/>
+    <property name="java.specification.version" value="1.7"/>
+    <property name="user.name" value="root"/>
+    <property name="java.class.path" value="/usr/share/maven/boot/plexus-classworlds-2.x.jar"/>
+    <property name="java.vm.specification.version" value="1.7"/>
+    <property name="sun.arch.data.model" value="64"/>
+    <property name="java.home" value="/usr/lib/jvm/java-7-oracle/jre"/>
+    <property name="sun.java.command" value="org.codehaus.plexus.classworlds.launcher.Launcher clean install"/>
+    <property name="java.specification.vendor" value="Oracle Corporation"/>
+    <property name="user.language" value="en"/>
+    <property name="awt.toolkit" value="sun.awt.X11.XToolkit"/>
+    <property name="java.vm.info" value="mixed mode"/>
+    <property name="java.version" value="1.7.0_25"/>
+    <property name="java.ext.dirs" value="/usr/lib/jvm/java-7-oracle/jre/lib/ext:/usr/java/packages/lib/ext"/>
+    <property name="securerandom.source" value="file:/dev/./urandom"/>
+    <property name="sun.boot.class.path" value="/usr/lib/jvm/java-7-oracle/jre/lib/resources.jar:/usr/lib/jvm/java-7-oracle/jre/lib/rt.jar:/usr/lib/jvm/java-7-oracle/jre/lib/sunrsasign.jar:/usr/lib/jvm/java-7-oracle/jre/lib/jsse.jar:/usr/lib/jvm/java-7-oracle/jre/lib/jce.jar:/usr/lib/jvm/java-7-oracle/jre/lib/charsets.jar:/usr/lib/jvm/java-7-oracle/jre/lib/jfr.jar:/usr/lib/jvm/java-7-oracle/jre/classes"/>
+    <property name="java.vendor" value="Oracle Corporation"/>
+    <property name="logback.configurationFile" value="/home/user/controller/opendaylight/commons/opendaylight/logback.xml"/>
+    <property name="maven.home" value="/usr/share/maven"/>
+    <property name="file.separator" value="/"/>
+    <property name="java.vendor.url.bug" value="http://bugreport.sun.com/bugreport/"/>
+    <property name="sun.cpu.endian" value="little"/>
+    <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
+    <property name="sun.desktop" value="gnome"/>
+    <property name="sun.cpu.isalist" value=""/>
+  </properties>
+  <testcase name="testStatistics" classname="org.opendaylight.controller.northbound.integrationtest.NorthboundIT" time="11.636"/>
+  <testcase name="testSwitchManager" classname="org.opendaylight.controller.northbound.integrationtest.NorthboundIT" time="9.824"/>
+  <testcase name="testHostTracker" classname="org.opendaylight.controller.northbound.integrationtest.NorthboundIT" time="19.35"/>
+  <testcase name="testStaticRoutingNorthbound" classname="org.opendaylight.controller.northbound.integrationtest.NorthboundIT" time="9.707"/>
+  <testcase name="testFlowProgrammer" classname="org.opendaylight.controller.northbound.integrationtest.NorthboundIT" time="12.427">
+    <error message="PermGen space" type="java.lang.OutOfMemoryError">java.lang.OutOfMemoryError: PermGen space
+</error>
+    <system-out>GossipRouter started at Fri Jul 05 09:27:49 PDT 2013
+Listening on port 12001 bound on address 0.0.0.0/0.0.0.0
+Backlog is 1000, linger timeout is 2000, and read timeout is 0
+09:27:51.346 [Start Level Event Dispatcher] ERROR o.o.c.c.s.internal.ClusterManager - Cannot configure infinispan .. bailing out 
+09:27:51.348 [Start Level Event Dispatcher] ERROR o.o.c.c.s.internal.ClusterManager - Stack Trace that raised th exception
+</system-out>
+  </testcase>
+  <testcase name="testSubnetsNorthbound" classname="org.opendaylight.controller.northbound.integrationtest.NorthboundIT" time="19.457">
+    <error message="gave up waiting for service org.ops4j.pax.exam.ProbeInvoker" type="org.ops4j.pax.swissbox.tracker.ServiceLookupException">org.ops4j.pax.swissbox.tracker.ServiceLookupException: gave up waiting for service org.ops4j.pax.exam.ProbeInvoker
+	at org.ops4j.pax.swissbox.tracker.ServiceLookup.getService(ServiceLookup.java:161)
+	at org.ops4j.pax.swissbox.tracker.ServiceLookup.getService(ServiceLookup.java:104)
+	at org.ops4j.pax.swissbox.tracker.ServiceLookup.getService(ServiceLookup.java:87)
+	at org.ops4j.pax.exam.nat.internal.NativeTestContainer.call(NativeTestContainer.java:103)
+	at org.ops4j.pax.exam.spi.reactors.AllConfinedStagedReactor.invoke(AllConfinedStagedReactor.java:84)
+	at org.ops4j.pax.exam.junit.PaxExam$2.evaluate(PaxExam.java:293)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:271)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:70)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:50)
+	at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:63)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:236)
+	at org.junit.runners.ParentRunner.access$000(ParentRunner.java:53)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:229)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:309)
+	at org.ops4j.pax.exam.junit.PaxExam.run(PaxExam.java:111)
+	at org.apache.maven.surefire.junit4.JUnit4Provider.execute(JUnit4Provider.java:264)
+	at org.apache.maven.surefire.junit4.JUnit4Provider.executeTestSet(JUnit4Provider.java:153)
+	at org.apache.maven.surefire.junit4.JUnit4Provider.invoke(JUnit4Provider.java:124)
+	at org.apache.maven.surefire.booter.ForkedBooter.invokeProviderInSameClassLoader(ForkedBooter.java:200)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:153)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:103)
+</error>
+  </testcase>
+</testsuite>

@@ -1,0 +1,664 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ClusterManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">clustering.services-implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.clustering.services_implementation.internal</a> &gt; <span class="el_source">ClusterManager.java</span></div><h1>ClusterManager.java</h1><pre class="source lang-java linenums">
+/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.clustering.services_implementation.internal;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentMap;
+
+import javax.transaction.HeuristicMixedException;
+import javax.transaction.HeuristicRollbackException;
+import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
+import javax.transaction.SystemException;
+import javax.transaction.Transaction;
+import javax.transaction.TransactionManager;
+
+import org.infinispan.Cache;
+import org.infinispan.configuration.cache.Configuration;
+import org.infinispan.manager.DefaultCacheManager;
+import org.infinispan.manager.EmbeddedCacheManager;
+import org.infinispan.notifications.Listener;
+import org.infinispan.notifications.cachemanagerlistener.annotation.ViewChanged;
+import org.infinispan.notifications.cachemanagerlistener.event.ViewChangedEvent;
+import org.infinispan.remoting.transport.Address;
+import org.infinispan.remoting.transport.Transport;
+import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
+import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
+import org.jgroups.Channel;
+import org.jgroups.Event;
+import org.jgroups.stack.GossipRouter;
+import org.opendaylight.controller.clustering.services.CacheConfigException;
+import org.opendaylight.controller.clustering.services.CacheExistException;
+import org.opendaylight.controller.clustering.services.CacheListenerAddException;
+import org.opendaylight.controller.clustering.services.IClusterServices;
+import org.opendaylight.controller.clustering.services.IGetUpdates;
+import org.opendaylight.controller.clustering.services.IListenRoleChange;
+import org.opendaylight.controller.clustering.services.ListenRoleChangeAddException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+<span class="nc" id="L60">public class ClusterManager implements IClusterServices {</span>
+<span class="nc" id="L61">    protected static final Logger logger = LoggerFactory</span>
+<span class="nc" id="L62">            .getLogger(ClusterManager.class);</span>
+    private DefaultCacheManager cm;
+    GossipRouter gossiper;
+    private HashSet&lt;IListenRoleChange&gt; roleChangeListeners;
+    private ViewChangedListener cacheManagerListener;
+
+<span class="nc" id="L68">    private static String loopbackAddress = &quot;127.0.0.1&quot;;</span>
+
+    /**
+     * Start a JGroups GossipRouter if we are a supernode. The
+     * GosispRouter is nothing more than a simple
+     * rendevouz-pointer. All the nodes that wants to join the cluster
+     * will come to any of the rendevouz point and they introduce the
+     * nodes to all the others. Once the meet and greet phase if over,
+     * the nodes will open a full-mesh with the remaining n-1 nodes,
+     * so even if the GossipRouter goes down nothing is lost.
+     * NOTE: This function has the side effect to set some of the
+     * JGROUPS configurations, this because in this function already
+     * we try to retrieve some of the network capabilities of the
+     * device and so it's better not to do that again
+     *
+     *
+     * @return GossipRouter
+     */
+    private GossipRouter startGossiper() {
+<span class="nc" id="L87">        boolean amIGossipRouter = false;</span>
+<span class="nc" id="L88">        Integer gossipRouterPortDefault = 12001;</span>
+<span class="nc" id="L89">        Integer gossipRouterPort = gossipRouterPortDefault;</span>
+<span class="nc" id="L90">        InetAddress gossipRouterAddress = null;</span>
+<span class="nc" id="L91">        String supernodes_list = System.getProperty(&quot;supernodes&quot;,</span>
+<span class="nc" id="L92">                loopbackAddress);</span>
+<span class="nc" id="L93">        StringBuffer sanitized_supernodes_list = new StringBuffer();</span>
+<span class="nc" id="L94">        List&lt;InetAddress&gt; myAddresses = new ArrayList&lt;InetAddress&gt;();</span>
+
+<span class="nc" id="L96">        StringTokenizer supernodes = new StringTokenizer(supernodes_list, &quot;:&quot;);</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (supernodes.hasMoreTokens()) {</span>
+            // Populate the list of my addresses
+            try {
+<span class="nc" id="L100">                Enumeration&lt;NetworkInterface&gt; e = NetworkInterface.getNetworkInterfaces();</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">                while (e.hasMoreElements()) {</span>
+<span class="nc" id="L102">                    NetworkInterface n = (NetworkInterface) e.nextElement();</span>
+<span class="nc" id="L103">                    Enumeration&lt;InetAddress&gt; ee = n.getInetAddresses();</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">                    while (ee.hasMoreElements()) {</span>
+<span class="nc" id="L105">                        InetAddress i = (InetAddress) ee.nextElement();</span>
+<span class="nc" id="L106">                        myAddresses.add(i);</span>
+                    }
+                }
+<span class="nc" id="L109">            } catch (SocketException se) {</span>
+<span class="nc" id="L110">                logger.error(&quot;Cannot get the list of network interfaces&quot;);</span>
+<span class="nc" id="L111">                return null;</span>
+            }
+        }
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        while (supernodes.hasMoreTokens()) {</span>
+<span class="nc" id="L115">            String curr_supernode = supernodes.nextToken();</span>
+<span class="nc" id="L116">            logger.debug(&quot;Examining supernode {}&quot;, curr_supernode);</span>
+<span class="nc" id="L117">            StringTokenizer host_port = new StringTokenizer(curr_supernode,</span>
+<span class="nc" id="L118">                    &quot;[]&quot;);</span>
+            String host;
+            String port;
+<span class="nc" id="L121">            Integer port_num = gossipRouterPortDefault;</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">            if (host_port.countTokens() &gt; 2) {</span>
+<span class="nc" id="L123">                logger.error(&quot;Error parsing supernode {} proceed to the next one&quot;,</span>
+<span class="nc" id="L124">                        curr_supernode);</span>
+<span class="nc" id="L125">                continue;</span>
+            }
+<span class="nc" id="L127">            host = host_port.nextToken();</span>
+            InetAddress hostAddr;
+            try {
+<span class="nc" id="L130">                hostAddr = InetAddress.getByName(host);</span>
+<span class="nc" id="L131">            } catch (UnknownHostException ue) {</span>
+<span class="nc" id="L132">                logger.error(&quot;Host not known&quot;);</span>
+<span class="nc" id="L133">                continue;</span>
+            }
+<span class="nc bnc" id="L135" title="All 2 branches missed.">            if (host_port.hasMoreTokens()) {</span>
+<span class="nc" id="L136">                port = host_port.nextToken();</span>
+                try {
+<span class="nc" id="L138">                    port_num = Integer.valueOf(port);</span>
+<span class="nc" id="L139">                } catch (NumberFormatException ne) {</span>
+<span class="nc" id="L140">                    logger</span>
+<span class="nc" id="L141">                            .error(&quot;Supplied supernode gossiepr port is not recognized, using standard gossipport&quot;);</span>
+<span class="nc" id="L142">                    port_num = gossipRouterPortDefault;</span>
+                }
+<span class="nc bnc" id="L144" title="All 4 branches missed.">                if ((port_num &gt; 65535) || (port_num &lt; 0)) {</span>
+<span class="nc" id="L145">                    logger</span>
+<span class="nc" id="L146">                            .error(&quot;Supplied supernode gossip port is outside a valid TCP port range&quot;);</span>
+<span class="nc" id="L147">                    port_num = gossipRouterPortDefault;</span>
+                }
+            }
+<span class="nc bnc" id="L150" title="All 2 branches missed.">            if (!amIGossipRouter) {</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">                if (host != null) {</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                    for (InetAddress myAddr : myAddresses) {</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">                        if (myAddr.equals(hostAddr)) {</span>
+<span class="nc" id="L154">                            amIGossipRouter = true;</span>
+<span class="nc" id="L155">                            gossipRouterAddress = hostAddr;</span>
+<span class="nc" id="L156">                            gossipRouterPort = port_num;</span>
+<span class="nc" id="L157">                            break;</span>
+                        }
+                    }
+                }
+            }
+<span class="nc bnc" id="L162" title="All 2 branches missed.">            if (!sanitized_supernodes_list.toString().equals(&quot;&quot;)) {</span>
+<span class="nc" id="L163">                sanitized_supernodes_list.append(&quot;,&quot;);</span>
+            }
+<span class="nc" id="L165">            sanitized_supernodes_list.append(hostAddr.getHostAddress() + &quot;[&quot;</span>
+<span class="nc" id="L166">                    + port_num + &quot;]&quot;);</span>
+        }
+
+<span class="nc bnc" id="L169" title="All 2 branches missed.">        if (amIGossipRouter) {</span>
+            // Set the Jgroups binding interface to the one we got
+            // from the supernodes attribute
+<span class="nc bnc" id="L172" title="All 2 branches missed.">            if (gossipRouterAddress != null) {</span>
+<span class="nc" id="L173">                System.setProperty(&quot;jgroups.tcp.address&quot;, gossipRouterAddress</span>
+<span class="nc" id="L174">                        .getHostAddress());</span>
+            }
+<span class="nc" id="L176">        } else {</span>
+            // Set the Jgroup binding interface to the one we are well
+            // known outside or else to the first with non-local
+            // scope.
+            try {
+<span class="nc" id="L181">                String myBind = InetAddress.getLocalHost().getHostAddress();</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">                if (myBind == null</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">                        || InetAddress.getLocalHost().isLoopbackAddress()) {</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">                    for (InetAddress myAddr : myAddresses) {</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">                        if (myAddr.isLoopbackAddress()</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">                                || myAddr.isLinkLocalAddress()) {</span>
+<span class="nc" id="L187">                            logger.debug(&quot;Skipping local address {}&quot;,</span>
+<span class="nc" id="L188">                                         myAddr.getHostAddress());</span>
+<span class="nc" id="L189">                            continue;</span>
+                        } else {
+                            // First non-local address
+<span class="nc" id="L192">                            myBind = myAddr.getHostAddress();</span>
+<span class="nc" id="L193">                            logger.debug(&quot;First non-local address {}&quot;, myBind);</span>
+<span class="nc" id="L194">                            break;</span>
+                        }
+                    }
+                }
+<span class="nc" id="L198">                String jgroupAddress = System</span>
+<span class="nc" id="L199">                        .getProperty(&quot;jgroups.tcp.address&quot;);</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">                if (jgroupAddress == null) {</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">                    if (myBind != null) {</span>
+<span class="nc" id="L202">                        logger.debug(&quot;Set bind address to be {}&quot;, myBind);</span>
+<span class="nc" id="L203">                        System.setProperty(&quot;jgroups.tcp.address&quot;, myBind);</span>
+<span class="nc" id="L204">                    } else {</span>
+<span class="nc" id="L205">                        logger</span>
+<span class="nc" id="L206">                                .debug(&quot;Set bind address to be LOCALHOST=127.0.0.1&quot;);</span>
+<span class="nc" id="L207">                        System.setProperty(&quot;jgroups.tcp.address&quot;, &quot;127.0.0.1&quot;);</span>
+                    }
+<span class="nc" id="L209">                } else {</span>
+<span class="nc" id="L210">                    logger.debug(&quot;jgroup.tcp.address already set to be {}&quot;,</span>
+<span class="nc" id="L211">                            jgroupAddress);</span>
+                }
+<span class="nc" id="L213">            } catch (UnknownHostException uhe) {</span>
+<span class="nc" id="L214">                logger</span>
+<span class="nc" id="L215">                        .error(&quot;Met UnknownHostException while trying to get binding address for jgroups&quot;);</span>
+            }
+        }
+
+        // The supernodes list constitute also the tcpgossip initial
+        // host list
+<span class="nc" id="L221">        System.setProperty(&quot;jgroups.tcpgossip.initial_hosts&quot;,</span>
+<span class="nc" id="L222">                sanitized_supernodes_list.toString());</span>
+<span class="nc" id="L223">        logger.debug(&quot;jgroups.tcp.address set to {}&quot;,</span>
+<span class="nc" id="L224">                System.getProperty(&quot;jgroups.tcp.address&quot;));</span>
+<span class="nc" id="L225">        logger.debug(&quot;jgroups.tcpgossip.initial_hosts set to {}&quot;,</span>
+<span class="nc" id="L226">                System.getProperty(&quot;jgroups.tcpgossip.initial_hosts&quot;));</span>
+<span class="nc" id="L227">        GossipRouter res = null;</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">        if (amIGossipRouter) {</span>
+<span class="nc" id="L229">            logger.info(&quot;I'm a GossipRouter will listen on port {}&quot;,</span>
+<span class="nc" id="L230">                    gossipRouterPort);</span>
+<span class="nc" id="L231">            res = new GossipRouter(gossipRouterPort);</span>
+        }
+<span class="nc" id="L233">        return res;</span>
+    }
+
+    public void start() {
+<span class="nc" id="L237">        this.gossiper = startGossiper();</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        if (this.gossiper != null) {</span>
+<span class="nc" id="L239">            logger.debug(&quot;Trying to start Gossiper&quot;);</span>
+            try {
+<span class="nc" id="L241">                this.gossiper.start();</span>
+<span class="nc" id="L242">                logger.info(&quot;Started GossipRouter&quot;);</span>
+<span class="nc" id="L243">            } catch (Exception e) {</span>
+<span class="nc" id="L244">                logger.error(&quot;GossipRouter didn't start. Exception Stack Trace&quot;,</span>
+<span class="nc" id="L245">                             e);</span>
+            }
+        }
+<span class="nc" id="L248">        logger.info(&quot;Starting the ClusterManager&quot;);</span>
+        try {
+            //FIXME keeps throwing FileNotFoundException
+<span class="nc" id="L251">            this.cm = new DefaultCacheManager(&quot;config/infinispan-config.xml&quot;);</span>
+<span class="nc" id="L252">            logger.debug(&quot;Allocated ClusterManager&quot;);</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">            if (this.cm != null) {</span>
+<span class="nc" id="L254">                this.cm.start();</span>
+<span class="nc" id="L255">                this.cm.startCache();</span>
+<span class="nc" id="L256">                logger.debug(&quot;Started the ClusterManager&quot;);</span>
+            }
+<span class="nc" id="L258">        } catch (Exception ioe) {</span>
+<span class="nc" id="L259">            logger.error(&quot;Cannot configure infinispan .. bailing out &quot;);</span>
+<span class="nc" id="L260">            logger.error(&quot;Stack Trace that raised th exception&quot;);</span>
+<span class="nc" id="L261">            logger.error(&quot;&quot;,ioe);</span>
+<span class="nc" id="L262">            this.cm = null;</span>
+<span class="nc" id="L263">            this.stop();</span>
+        }
+<span class="nc" id="L265">        logger.debug(&quot;Cache Manager has value {}&quot;, this.cm);</span>
+<span class="nc" id="L266">    }</span>
+
+    public void stop() {
+<span class="nc" id="L269">        logger.info(&quot;Stopping the ClusterManager&quot;);</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        if (this.cm != null) {</span>
+<span class="nc" id="L271">            logger.info(&quot;Found a valid ClusterManager, now let it be stopped&quot;);</span>
+<span class="nc" id="L272">            this.cm.stop();</span>
+<span class="nc" id="L273">            this.cm = null;</span>
+        }
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        if (this.gossiper != null) {</span>
+<span class="nc" id="L276">            this.gossiper.stop();</span>
+<span class="nc" id="L277">            this.gossiper = null;</span>
+        }
+<span class="nc" id="L279">    }</span>
+
+    @Override
+    public ConcurrentMap&lt;?, ?&gt; createCache(String containerName,
+            String cacheName, Set&lt;cacheMode&gt; cMode) throws CacheExistException,
+            CacheConfigException {
+<span class="nc" id="L285">        EmbeddedCacheManager manager = this.cm;</span>
+        Cache&lt;Object,Object&gt; c;
+<span class="nc" id="L287">        String realCacheName = &quot;{&quot; + containerName + &quot;}_{&quot; + cacheName + &quot;}&quot;;</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L289">            return null;</span>
+        }
+
+<span class="nc bnc" id="L292" title="All 2 branches missed.">        if (manager.cacheExists(realCacheName)) {</span>
+<span class="nc" id="L293">            throw new CacheExistException();</span>
+        }
+
+        // Sanity check to avoid contrasting parameters
+<span class="nc" id="L297">        if (cMode.containsAll(EnumSet.of(</span>
+<span class="nc" id="L298">                IClusterServices.cacheMode.NON_TRANSACTIONAL,</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">                IClusterServices.cacheMode.TRANSACTIONAL))) {</span>
+<span class="nc" id="L300">            throw new CacheConfigException();</span>
+        }
+
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        if (cMode.contains(IClusterServices.cacheMode.NON_TRANSACTIONAL)) {</span>
+<span class="nc" id="L304">            c = manager.getCache(realCacheName);</span>
+<span class="nc" id="L305">            return c;</span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">        } else if (cMode.contains(IClusterServices.cacheMode.TRANSACTIONAL)) {</span>
+<span class="nc" id="L307">            Configuration rc = manager</span>
+<span class="nc" id="L308">                    .getCacheConfiguration(&quot;transactional-type&quot;);</span>
+<span class="nc" id="L309">            manager.defineConfiguration(realCacheName, rc);</span>
+<span class="nc" id="L310">            c = manager.getCache(realCacheName);</span>
+<span class="nc" id="L311">            return c;</span>
+        }
+<span class="nc" id="L313">        return null;</span>
+    }
+
+    @Override
+    public ConcurrentMap&lt;?, ?&gt; getCache(String containerName, String cacheName) {
+<span class="nc" id="L318">        EmbeddedCacheManager manager = this.cm;</span>
+        Cache&lt;Object,Object&gt; c;
+<span class="nc" id="L320">        String realCacheName = &quot;{&quot; + containerName + &quot;}_{&quot; + cacheName + &quot;}&quot;;</span>
+<span class="nc bnc" id="L321" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L322">            return null;</span>
+        }
+
+<span class="nc bnc" id="L325" title="All 2 branches missed.">        if (manager.cacheExists(realCacheName)) {</span>
+<span class="nc" id="L326">            c = manager.getCache(realCacheName);</span>
+<span class="nc" id="L327">            return c;</span>
+        }
+<span class="nc" id="L329">        return null;</span>
+    }
+
+    @Override
+    public void destroyCache(String containerName, String cacheName) {
+<span class="nc" id="L334">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc" id="L335">        String realCacheName = &quot;{&quot; + containerName + &quot;}_{&quot; + cacheName + &quot;}&quot;;</span>
+<span class="nc bnc" id="L336" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L337">            return;</span>
+        }
+<span class="nc bnc" id="L339" title="All 2 branches missed.">        if (manager.cacheExists(realCacheName)) {</span>
+<span class="nc" id="L340">            manager.removeCache(realCacheName);</span>
+        }
+<span class="nc" id="L342">    }</span>
+
+    @Override
+    public boolean existCache(String containerName, String cacheName) {
+<span class="nc" id="L346">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc" id="L347">        String realCacheName = &quot;{&quot; + containerName + &quot;}_{&quot; + cacheName + &quot;}&quot;;</span>
+<span class="nc bnc" id="L348" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L349">            return false;</span>
+        }
+<span class="nc" id="L351">        return manager.cacheExists(realCacheName);</span>
+    }
+
+    @Override
+    public Set&lt;String&gt; getCacheList(String containerName) {
+<span class="nc" id="L356">        Set&lt;String&gt; perContainerCaches = new HashSet&lt;String&gt;();</span>
+<span class="nc" id="L357">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L358" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L359">            return null;</span>
+        }
+<span class="nc bnc" id="L361" title="All 2 branches missed.">        for (String cacheName : manager.getCacheNames()) {</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">            if (cacheName.startsWith(&quot;{&quot; + containerName + &quot;}_&quot;)) {</span>
+<span class="nc" id="L363">                String[] res = cacheName.split(&quot;[{}]&quot;);</span>
+<span class="nc bnc" id="L364" title="All 4 branches missed.">                if (res.length &gt;= 4 &amp;&amp; res[1].equals(containerName)</span>
+<span class="nc bnc" id="L365" title="All 2 branches missed.">                        &amp;&amp; res[2].equals(&quot;_&quot;)) {</span>
+<span class="nc" id="L366">                    perContainerCaches.add(res[3]);</span>
+                }
+            }
+        }
+
+<span class="nc" id="L371">        return (perContainerCaches);</span>
+    }
+
+    @Override
+    public Properties getCacheProperties(String containerName, String cacheName) {
+<span class="nc" id="L376">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L378">            return null;</span>
+        }
+<span class="nc" id="L380">        String realCacheName = &quot;{&quot; + containerName + &quot;}_{&quot; + cacheName + &quot;}&quot;;</span>
+<span class="nc bnc" id="L381" title="All 2 branches missed.">        if (!manager.cacheExists(realCacheName)) {</span>
+<span class="nc" id="L382">            return null;</span>
+        }
+<span class="nc" id="L384">        Configuration conf = manager.getCache(realCacheName).getAdvancedCache()</span>
+<span class="nc" id="L385">                .getCacheConfiguration();</span>
+<span class="nc" id="L386">        Properties p = new Properties();</span>
+<span class="nc" id="L387">        p.setProperty(IClusterServices.cacheProps.TRANSACTION_PROP.toString(),</span>
+<span class="nc" id="L388">                conf.transaction().toString());</span>
+<span class="nc" id="L389">        p.setProperty(IClusterServices.cacheProps.CLUSTERING_PROP.toString(),</span>
+<span class="nc" id="L390">                conf.clustering().toString());</span>
+<span class="nc" id="L391">        p.setProperty(IClusterServices.cacheProps.LOCKING_PROP.toString(), conf</span>
+<span class="nc" id="L392">                .locking().toString());</span>
+<span class="nc" id="L393">        return p;</span>
+    }
+
+    @Override
+    public void addListener(String containerName, String cacheName,
+            IGetUpdates&lt;?, ?&gt; u) throws CacheListenerAddException {
+<span class="nc" id="L399">        EmbeddedCacheManager manager = this.cm;</span>
+        Cache&lt;Object,Object&gt; c;
+<span class="nc" id="L401">        String realCacheName = &quot;{&quot; + containerName + &quot;}_{&quot; + cacheName + &quot;}&quot;;</span>
+<span class="nc bnc" id="L402" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L403">            return;</span>
+        }
+
+<span class="nc bnc" id="L406" title="All 2 branches missed.">        if (!manager.cacheExists(realCacheName)) {</span>
+<span class="nc" id="L407">            throw new CacheListenerAddException();</span>
+        }
+<span class="nc" id="L409">        c = manager.getCache(realCacheName);</span>
+<span class="nc" id="L410">        CacheListenerContainer cl = new CacheListenerContainer(u,</span>
+<span class="nc" id="L411">                containerName, cacheName);</span>
+<span class="nc" id="L412">        c.addListener(cl);</span>
+<span class="nc" id="L413">    }</span>
+
+    @Override
+    public Set&lt;IGetUpdates&lt;?, ?&gt;&gt; getListeners(String containerName,
+            String cacheName) {
+<span class="nc" id="L418">        EmbeddedCacheManager manager = this.cm;</span>
+        Cache&lt;Object,Object&gt; c;
+<span class="nc" id="L420">        String realCacheName = &quot;{&quot; + containerName + &quot;}_{&quot; + cacheName + &quot;}&quot;;</span>
+<span class="nc bnc" id="L421" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L422">            return null;</span>
+        }
+
+<span class="nc bnc" id="L425" title="All 2 branches missed.">        if (!manager.cacheExists(realCacheName)) {</span>
+<span class="nc" id="L426">            return null;</span>
+        }
+<span class="nc" id="L428">        c = manager.getCache(realCacheName);</span>
+
+<span class="nc" id="L430">        Set&lt;IGetUpdates&lt;?, ?&gt;&gt; res = new HashSet&lt;IGetUpdates&lt;?, ?&gt;&gt;();</span>
+<span class="nc" id="L431">        Set&lt;Object&gt; listeners = c.getListeners();</span>
+<span class="nc bnc" id="L432" title="All 2 branches missed.">        for (Object listener : listeners) {</span>
+<span class="nc bnc" id="L433" title="All 2 branches missed.">            if (listener instanceof CacheListenerContainer) {</span>
+<span class="nc" id="L434">                CacheListenerContainer cl = (CacheListenerContainer) listener;</span>
+<span class="nc" id="L435">                res.add(cl.whichListener());</span>
+            }
+        }
+
+<span class="nc" id="L439">        return res;</span>
+    }
+
+    @Override
+    public void removeListener(String containerName, String cacheName,
+            IGetUpdates&lt;?, ?&gt; u) {
+<span class="nc" id="L445">        EmbeddedCacheManager manager = this.cm;</span>
+        Cache&lt;Object,Object&gt; c;
+<span class="nc" id="L447">        String realCacheName = &quot;{&quot; + containerName + &quot;}_{&quot; + cacheName + &quot;}&quot;;</span>
+<span class="nc bnc" id="L448" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L449">            return;</span>
+        }
+
+<span class="nc bnc" id="L452" title="All 2 branches missed.">        if (!manager.cacheExists(realCacheName)) {</span>
+<span class="nc" id="L453">            return;</span>
+        }
+<span class="nc" id="L455">        c = manager.getCache(realCacheName);</span>
+
+<span class="nc" id="L457">        Set&lt;Object&gt; listeners = c.getListeners();</span>
+<span class="nc bnc" id="L458" title="All 2 branches missed.">        for (Object listener : listeners) {</span>
+<span class="nc bnc" id="L459" title="All 2 branches missed.">            if (listener instanceof CacheListenerContainer) {</span>
+<span class="nc" id="L460">                CacheListenerContainer cl = (CacheListenerContainer) listener;</span>
+<span class="nc bnc" id="L461" title="All 2 branches missed.">                if (cl.whichListener() == u) {</span>
+<span class="nc" id="L462">                    c.removeListener(listener);</span>
+<span class="nc" id="L463">                    return;</span>
+                }
+            }
+        }
+<span class="nc" id="L467">    }</span>
+
+    @Override
+    public void tbegin() throws NotSupportedException, SystemException {
+<span class="nc" id="L471">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L472" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L473">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L475">        TransactionManager tm = manager.getCache(&quot;transactional-type&quot;)</span>
+<span class="nc" id="L476">                .getAdvancedCache().getTransactionManager();</span>
+<span class="nc bnc" id="L477" title="All 2 branches missed.">        if (tm == null) {</span>
+<span class="nc" id="L478">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L480">        tm.begin();</span>
+<span class="nc" id="L481">    }</span>
+
+    @Override
+    public void tcommit() throws RollbackException, HeuristicMixedException,
+            HeuristicRollbackException, java.lang.SecurityException,
+            java.lang.IllegalStateException, SystemException {
+<span class="nc" id="L487">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L488" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L489">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L491">        TransactionManager tm = manager.getCache(&quot;transactional-type&quot;)</span>
+<span class="nc" id="L492">                .getAdvancedCache().getTransactionManager();</span>
+<span class="nc bnc" id="L493" title="All 2 branches missed.">        if (tm == null) {</span>
+<span class="nc" id="L494">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L496">        tm.commit();</span>
+<span class="nc" id="L497">    }</span>
+
+    @Override
+    public void trollback() throws java.lang.IllegalStateException,
+            java.lang.SecurityException, SystemException {
+<span class="nc" id="L502">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L503" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L504">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L506">        TransactionManager tm = manager.getCache(&quot;transactional-type&quot;)</span>
+<span class="nc" id="L507">                .getAdvancedCache().getTransactionManager();</span>
+<span class="nc bnc" id="L508" title="All 2 branches missed.">        if (tm == null) {</span>
+<span class="nc" id="L509">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L511">        tm.rollback();</span>
+<span class="nc" id="L512">    }</span>
+
+    @Override
+    public Transaction tgetTransaction() throws SystemException {
+<span class="nc" id="L516">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L518">            throw new IllegalStateException();</span>
+        }
+<span class="nc" id="L520">        TransactionManager tm = manager.getCache(&quot;transactional-type&quot;)</span>
+<span class="nc" id="L521">                .getAdvancedCache().getTransactionManager();</span>
+<span class="nc bnc" id="L522" title="All 2 branches missed.">        if (tm == null) {</span>
+<span class="nc" id="L523">            return null;</span>
+        }
+<span class="nc" id="L525">        return tm.getTransaction();</span>
+    }
+
+    @Override
+    public boolean amIStandby() {
+<span class="nc" id="L530">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L531" title="All 2 branches missed.">        if (manager == null) {</span>
+            // In case we cannot fetch the information, lets assume we
+            // are standby, so to have less responsibility.
+<span class="nc" id="L534">            return true;</span>
+        }
+<span class="nc bnc" id="L536" title="All 2 branches missed.">        return (!manager.isCoordinator());</span>
+    }
+
+    private InetAddress addressToInetAddress(Address a) {
+<span class="nc" id="L540">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L541" title="All 4 branches missed.">        if ((manager == null) || (a == null)) {</span>
+            // In case we cannot fetch the information, lets assume we
+            // are standby, so to have less responsibility.
+<span class="nc" id="L544">            return null;</span>
+        }
+<span class="nc" id="L546">        Transport t = manager.getTransport();</span>
+<span class="nc bnc" id="L547" title="All 2 branches missed.">        if (t instanceof JGroupsTransport) {</span>
+<span class="nc" id="L548">            JGroupsTransport jt = (JGroupsTransport) t;</span>
+<span class="nc" id="L549">            Channel c = jt.getChannel();</span>
+<span class="nc bnc" id="L550" title="All 2 branches missed.">            if (a instanceof JGroupsAddress) {</span>
+<span class="nc" id="L551">                JGroupsAddress ja = (JGroupsAddress) a;</span>
+<span class="nc" id="L552">                org.jgroups.Address phys = (org.jgroups.Address) c</span>
+<span class="nc" id="L553">                        .down(new Event(Event.GET_PHYSICAL_ADDRESS, ja</span>
+<span class="nc" id="L554">                                .getJGroupsAddress()));</span>
+<span class="nc bnc" id="L555" title="All 2 branches missed.">                if (phys instanceof org.jgroups.stack.IpAddress) {</span>
+<span class="nc" id="L556">                    InetAddress bindAddress = ((org.jgroups.stack.IpAddress) phys)</span>
+<span class="nc" id="L557">                            .getIpAddress();</span>
+<span class="nc" id="L558">                    return bindAddress;</span>
+                }
+            }
+        }
+<span class="nc" id="L562">        return null;</span>
+    }
+
+    public List&lt;InetAddress&gt; getClusteredControllers() {
+<span class="nc" id="L566">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L567" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L568">            return null;</span>
+        }
+<span class="nc" id="L570">        List&lt;Address&gt; controllers = manager.getMembers();</span>
+<span class="nc bnc" id="L571" title="All 4 branches missed.">        if ((controllers == null) || controllers.size() == 0)</span>
+<span class="nc" id="L572">            return null;</span>
+
+<span class="nc" id="L574">        List&lt;InetAddress&gt; clusteredControllers = new ArrayList&lt;InetAddress&gt;();</span>
+<span class="nc bnc" id="L575" title="All 2 branches missed.">        for (Address a : controllers) {</span>
+<span class="nc" id="L576">            InetAddress inetAddress = addressToInetAddress(a);</span>
+<span class="nc bnc" id="L577" title="All 2 branches missed.">            if (inetAddress != null</span>
+<span class="nc bnc" id="L578" title="All 2 branches missed.">                    &amp;&amp; !inetAddress.getHostAddress().equals(loopbackAddress))</span>
+<span class="nc" id="L579">                clusteredControllers.add(inetAddress);</span>
+        }
+<span class="nc" id="L581">        return clusteredControllers;</span>
+    }
+
+    public InetAddress getMyAddress() {
+<span class="nc" id="L585">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L586" title="All 2 branches missed.">        if (manager == null) {</span>
+<span class="nc" id="L587">            return null;</span>
+        }
+<span class="nc" id="L589">        return addressToInetAddress(manager.getAddress());</span>
+    }
+
+    @Override
+    public InetAddress getActiveAddress() {
+<span class="nc" id="L594">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L595" title="All 2 branches missed.">        if (manager == null) {</span>
+            // In case we cannot fetch the information, lets assume we
+            // are standby, so to have less responsibility.
+<span class="nc" id="L598">            return null;</span>
+        }
+
+<span class="nc" id="L601">        return addressToInetAddress(manager.getCoordinator());</span>
+    }
+
+    @Override
+    public void listenRoleChange(IListenRoleChange i)
+            throws ListenRoleChangeAddException {
+<span class="nc" id="L607">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L608" title="All 2 branches missed.">        if (manager == null) {</span>
+            // In case we cannot fetch the information, lets assume we
+            // are standby, so to have less responsibility.
+<span class="nc" id="L611">            throw new ListenRoleChangeAddException();</span>
+        }
+
+<span class="nc bnc" id="L614" title="All 2 branches missed.">        if (this.roleChangeListeners == null) {</span>
+<span class="nc" id="L615">            this.roleChangeListeners = new HashSet&lt;IListenRoleChange&gt;();</span>
+<span class="nc" id="L616">            this.cacheManagerListener = new ViewChangedListener(</span>
+<span class="nc" id="L617">                    this.roleChangeListeners);</span>
+<span class="nc" id="L618">            manager.addListener(this.cacheManagerListener);</span>
+        }
+
+<span class="nc bnc" id="L621" title="All 2 branches missed.">        if (this.roleChangeListeners != null) {</span>
+<span class="nc" id="L622">            this.roleChangeListeners.add(i);</span>
+        }
+<span class="nc" id="L624">    }</span>
+
+    @Override
+    public void unlistenRoleChange(IListenRoleChange i) {
+<span class="nc" id="L628">        EmbeddedCacheManager manager = this.cm;</span>
+<span class="nc bnc" id="L629" title="All 2 branches missed.">        if (manager == null) {</span>
+            // In case we cannot fetch the information, lets assume we
+            // are standby, so to have less responsibility.
+<span class="nc" id="L632">            return;</span>
+        }
+
+<span class="nc bnc" id="L635" title="All 2 branches missed.">        if (this.roleChangeListeners != null) {</span>
+<span class="nc" id="L636">            this.roleChangeListeners.remove(i);</span>
+        }
+
+<span class="nc bnc" id="L639" title="All 2 branches missed.">        if ((this.roleChangeListeners != null &amp;&amp; this.roleChangeListeners</span>
+<span class="nc bnc" id="L640" title="All 2 branches missed.">                .isEmpty())</span>
+<span class="nc bnc" id="L641" title="All 2 branches missed.">                &amp;&amp; (this.cacheManagerListener != null)) {</span>
+<span class="nc" id="L642">            manager.removeListener(this.cacheManagerListener);</span>
+<span class="nc" id="L643">            this.cacheManagerListener = null;</span>
+<span class="nc" id="L644">            this.roleChangeListeners = null;</span>
+        }
+<span class="nc" id="L646">    }</span>
+
+    @Listener
+    public class ViewChangedListener {
+        Set&lt;IListenRoleChange&gt; roleListeners;
+
+<span class="nc" id="L652">        public ViewChangedListener(Set&lt;IListenRoleChange&gt; s) {</span>
+<span class="nc" id="L653">            this.roleListeners = s;</span>
+<span class="nc" id="L654">        }</span>
+
+        @ViewChanged
+        public void viewChanged(ViewChangedEvent e) {
+<span class="nc bnc" id="L658" title="All 2 branches missed.">            for (IListenRoleChange i : this.roleListeners) {</span>
+<span class="nc" id="L659">                i.newActiveAvailable();</span>
+            }
+<span class="nc" id="L661">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>

@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wadl:application xmlns:wadl="http://wadl.dev.java.net/2009/02" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <wadl:doc xmlns:enunciate="http://enunciate.codehaus.org/" enunciate:generatedBy="Enunciate-1.26.1"/>
+  <wadl:grammars>
+    <wadl:include href="ns0.xsd"/>
+  </wadl:grammars>
+  <wadl:resources base="http://localhost:8080/full">
+    <wadl:resource path="/controller/nb/v2/switch/{containerName}/nodes">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[The container for which we want to retrieve the list]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Retrieve a list of all the nodes and their properties in the network]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[A list of Pair each pair represents a
+org.opendaylight.controller.sal.core.Node and Set of
+org.opendaylight.controller.sal.core.Property attached to
+it.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="nodes"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/switch/{containerName}/switch-config">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="POST">
+        <wadl:doc>
+          <![CDATA[Save the current switch configurations]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response Status code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/switch/{containerName}/node/{nodeType}/{nodeId}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[The container for which we want to retrieve the list]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template">
+        <wadl:doc>
+          <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="GET">
+        <wadl:doc>
+          <![CDATA[Retrieve a list of all the node connectors and their properties in a
+given node]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[A List of Pair each pair represents a
+org.opendaylight.controller.sal.core.NodeConnector and
+its corresponding
+org.opendaylight.controller.sal.core.Property attached to
+it.]]>
+          </wadl:doc>
+          <wadl:representation mediaType="application/xml" element="nodeConnectors"/>
+          <wadl:representation mediaType="application/json"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/switch/{containerName}/node/{nodeType}/{nodeId}/property/{propertyName}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template">
+        <wadl:doc>
+          <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="propertyName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="DELETE">
+        <wadl:doc>
+          <![CDATA[Delete a property of a node]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response Status code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/switch/{containerName}/node/{nodeType}/{nodeId}/property/{propName}/{propValue}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template">
+        <wadl:doc>
+          <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="propName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="propValue" style="template">
+        <wadl:doc>
+          <![CDATA[Value of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="PUT">
+        <wadl:doc>
+          <![CDATA[Add a Name/Tier property to a node]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response Status code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/switch/{containerName}/nodeconnector/{nodeType}/{nodeId}/{nodeConnectorType}/{nodeConnectorId}/property/{propertyName}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template">
+        <wadl:doc>
+          <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeConnectorType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node connector being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeConnectorId" style="template">
+        <wadl:doc>
+          <![CDATA[NodeConnector Identifier as specified by org.opendaylight.controller.sal.core.NodeConnector]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="propertyName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="DELETE">
+        <wadl:doc>
+          <![CDATA[Delete a property of a node connector]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response Status code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+    <wadl:resource path="/controller/nb/v2/switch/{containerName}/nodeconnector/{nodeType}/{nodeId}/{nodeConnectorType}/{nodeConnectorId}/property/{propName}/{propValue}">
+      <wadl:param name="containerName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Container]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeId" style="template">
+        <wadl:doc>
+          <![CDATA[Node Identifier as specified by org.opendaylight.controller.sal.core.Node]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeConnectorType" style="template">
+        <wadl:doc>
+          <![CDATA[Type of the node connector being programmed]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="nodeConnectorId" style="template">
+        <wadl:doc>
+          <![CDATA[NodeConnector Identifier as specified by org.opendaylight.controller.sal.core.NodeConnector]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="propName" style="template">
+        <wadl:doc>
+          <![CDATA[Name of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:param name="propValue" style="template">
+        <wadl:doc>
+          <![CDATA[Value of the Property specified by org.opendaylight.controller.sal.core.Property and its extended classes]]>
+        </wadl:doc>
+      </wadl:param>
+      <wadl:method name="PUT">
+        <wadl:doc>
+          <![CDATA[Add a Name/Bandwidth property to a node connector]]>
+        </wadl:doc>
+        <wadl:request/>
+        <wadl:response>
+          <wadl:doc>
+            <![CDATA[Response as dictated by the HTTP Response Status code]]>
+          </wadl:doc>
+          <wadl:representation mediaType="*/*"/>
+          <wadl:representation mediaType="application/xml"/>
+        </wadl:response>
+      </wadl:method>
+    </wadl:resource>
+  </wadl:resources>
+</wadl:application>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CacheListenerContainer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">clustering.services-implementation</a> &gt; <a href="index.html" class="el_package">org.opendaylight.controller.clustering.services_implementation.internal</a> &gt; <span class="el_source">CacheListenerContainer.java</span></div><h1>CacheListenerContainer.java</h1><pre class="source lang-java linenums">
+/*
+ * Copyright (c) 2013 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+
+package org.opendaylight.controller.clustering.services_implementation.internal;
+
+import org.infinispan.notifications.Listener;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryCreated;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryModified;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryRemoved;
+import org.infinispan.notifications.cachelistener.event.CacheEntryCreatedEvent;
+import org.infinispan.notifications.cachelistener.event.CacheEntryModifiedEvent;
+import org.infinispan.notifications.cachelistener.event.CacheEntryRemovedEvent;
+import org.opendaylight.controller.clustering.services.IGetUpdates;
+
+@Listener
+public class CacheListenerContainer {
+    private IGetUpdates toBeUpdated;
+    private String containerName;
+    private String cacheName;
+
+<span class="nc" id="L27">    public CacheListenerContainer(IGetUpdates i, String containerName,</span>
+            String cacheName) {
+<span class="nc" id="L29">        this.toBeUpdated = i;</span>
+<span class="nc" id="L30">        this.containerName = containerName;</span>
+<span class="nc" id="L31">        this.cacheName = cacheName;</span>
+<span class="nc" id="L32">    }</span>
+
+    public IGetUpdates whichListener() {
+<span class="nc" id="L35">        return this.toBeUpdated;</span>
+    }
+
+    @CacheEntryCreated
+    public void observeCreate(CacheEntryCreatedEvent&lt;Object, Object&gt; event) {
+<span class="nc bnc" id="L40" title="All 2 branches missed.">        if (event.isPre()) {</span>
+<span class="nc" id="L41">            return;</span>
+        }
+
+<span class="nc bnc" id="L44" title="All 2 branches missed.">        if (this.toBeUpdated != null) {</span>
+<span class="nc" id="L45">            this.toBeUpdated.entryCreated(event.getKey(), this.containerName,</span>
+<span class="nc" id="L46">                    this.cacheName, event.isOriginLocal());</span>
+        }
+<span class="nc" id="L48">    }</span>
+
+    @CacheEntryModified
+    public void observeModify(CacheEntryModifiedEvent&lt;Object, Object&gt; event) {
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (event.isPre()) {</span>
+<span class="nc" id="L53">            return;</span>
+        }
+
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (this.toBeUpdated != null) {</span>
+<span class="nc" id="L57">            this.toBeUpdated.entryUpdated(event.getKey(), event.getValue(),</span>
+<span class="nc" id="L58">                    this.containerName, this.cacheName, event.isOriginLocal());</span>
+        }
+<span class="nc" id="L60">    }</span>
+
+    @CacheEntryRemoved
+    public void observeRemove(CacheEntryRemovedEvent&lt;Object, Object&gt; event) {
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (event.isPre()) {</span>
+<span class="nc" id="L65">            return;</span>
+        }
+
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        if (this.toBeUpdated != null) {</span>
+<span class="nc" id="L69">            this.toBeUpdated.entryDeleted(event.getKey(), this.containerName,</span>
+<span class="nc" id="L70">                    this.cacheName, event.isOriginLocal());</span>
+        }
+<span class="nc" id="L72">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://jacoco.org">JaCoCo</a> 0.5.3.201107060350</span></div></body></html>
